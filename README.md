@@ -36,7 +36,7 @@ A full-stack web application for tracking project completion status across teams
 
 1. **Clone the repository**
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/Surya-2004/Project-Completion-Tracker.git
    cd Project-Completion-Tracker
    ```
 
@@ -225,7 +225,3 @@ If you encounter any issues during deployment, check:
 1. Render's [documentation](https://render.com/docs)
 2. MongoDB Atlas [documentation](https://docs.atlas.mongodb.com/)
 3. The application logs in Render dashboard
-
-## License
-
-This project is open source and available under the [MIT License](LICENSE). 

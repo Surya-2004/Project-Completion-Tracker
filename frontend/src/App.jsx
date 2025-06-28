@@ -11,7 +11,7 @@ import CompletedTeams from './pages/CompletedTeams';
 
 function App() {
   return (
-    <div className="dark">
+    <div className="dark min-h-screen bg-background text-foreground">
       <Router>
         <MainLayout>
           <Routes>

@@ -2,69 +2,34 @@ import { useEffect, useState } from "react"
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { Check } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
-
-const CHECKPOINTS = [
-  { key: "ideation", label: "Ideation" },
-  { key: "workSplit", label: "Work Split" },
-  { key: "localProjectDone", label: "Local Done" },
-  { key: "projectHosted", label: "Hosted" },
-]
-
-function CheckpointLine({ checkpoints, onToggle, disabled }) {
-  return (
-    <div className="space-y-2">
-      {/* Checkboxes */}
-      <div className="flex items-center justify-between">
-        {CHECKPOINTS.map((cp) => {
-          const isCompleted = checkpoints?.[cp.key]
-          return (
-            <button
-              key={cp.key}
-              onClick={() => onToggle(cp.key)}
-              disabled={disabled}
-              className={`
-                w-8 h-8 flex items-center justify-center border-2 rounded-md transition-all duration-150
-                ${
-                  isCompleted
-                    ? "bg-green-500 border-green-500 hover:bg-green-600"
-                    : "bg-neutral-800 border-neutral-600 hover:border-green-400"
-                }
-                ${disabled ? "opacity-60 cursor-not-allowed" : "hover:scale-105 active:scale-95"}
-              `}
-            >
-              {isCompleted && (
-                <Check className="w-4 h-4 text-white" />
-              )}
-            </button>
-          )
-        })}
-      </div>
-      {/* Labels */}
-      <div className="flex items-start justify-between">
-        {CHECKPOINTS.map((cp) => (
-          <div key={cp.key} className="flex flex-col items-center" style={{ width: "32px" }}>
-            <span className="text-xs text-neutral-300 text-center leading-tight whitespace-nowrap">{cp.label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export default function TeamList() {
   const [teams, setTeams] = useState([])
   const [departments, setDepartments] = useState([])
-  const [selectedDept, setSelectedDept] = useState('')
+  const [selectedDept, setSelectedDept] = useState('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [updating, setUpdating] = useState({}) // { [teamId]: boolean }
-  const [updateError, setUpdateError] = useState({}) // { [teamId]: string }
   const [selectedTeams, setSelectedTeams] = useState([])
   const [deleting, setDeleting] = useState(false)
   const [confirmDialog, setConfirmDialog] = useState({
@@ -75,14 +40,27 @@ export default function TeamList() {
   });
 
   useEffect(() => {
-    api.get('/departments').then(res => setDepartments(res.data)).catch(() => setDepartments([]));
+    api.get('/departments')
+      .then(res => {
+        console.log('Departments received:', res.data);
+        setDepartments(res.data.filter(dep => dep && dep._id));
+      })
+      .catch((err) => {
+        console.error('Error fetching departments:', err);
+        setDepartments([]);
+      });
   }, [])
 
   const fetchTeams = () => {
     setLoading(true)
     api.get('/teams')
-      .then(res => setTeams(res.data))
-      .catch(() => setError('Failed to fetch teams'))
+      .then(res => {
+        setTeams(res.data);
+      })
+      .catch((err) => {
+        console.error('Error fetching teams:', err);
+        setError('Failed to fetch teams');
+      })
       .finally(() => setLoading(false))
   }
 
@@ -90,48 +68,14 @@ export default function TeamList() {
     fetchTeams()
   }, [])
 
-  const filteredTeams = selectedDept
-    ? teams.filter(team =>
+  const filteredTeams = selectedDept === 'all'
+    ? teams
+    : teams.filter(team =>
         (team.students || []).some(stu => {
           const depId = stu.department?._id || stu.department
           return depId && depId.toString() === selectedDept
         })
       )
-    : teams
-
-  // Contiguous checkpoint logic for real teams
-  const handleCheckpointChange = async (teamId, checkpoint) => {
-    const team = teams.find(t => t._id === teamId)
-    if (!team) return
-    const idx = CHECKPOINTS.findIndex(cp => cp.key === checkpoint)
-    const isChecked = team.checkpoints?.[checkpoint]
-    let newCheckpoints = { ...team.checkpoints }
-    if (!isChecked) {
-      // Check this and all previous
-      for (let i = 0; i <= idx; i++) {
-        newCheckpoints[CHECKPOINTS[i].key] = true
-      }
-    } else {
-      // Uncheck this and all after
-      for (let i = idx; i < CHECKPOINTS.length; i++) {
-        newCheckpoints[CHECKPOINTS[i].key] = false
-      }
-    }
-    setUpdating(u => ({ ...u, [teamId]: true }))
-    setUpdateError(e => ({ ...e, [teamId]: '' }))
-    // Optimistically update UI
-    setTeams(ts => ts.map(t => t._id === teamId ? { ...t, checkpoints: newCheckpoints } : t))
-    try {
-      const res = await api.patch(`/teams/${teamId}/checkpoints`, newCheckpoints)
-      setTeams(ts => ts.map(t => t._id === teamId ? res.data : t))
-    } catch {
-      setUpdateError(e => ({ ...e, [teamId]: 'Failed to update' }))
-      // Revert UI
-      setTeams(ts => ts.map(t => t._id === teamId ? { ...t, checkpoints: team.checkpoints } : t))
-    } finally {
-      setUpdating(u => ({ ...u, [teamId]: false }))
-    }
-  }
 
   const handleSelectTeam = (teamId) => {
     setSelectedTeams(prev => 
@@ -209,135 +153,165 @@ export default function TeamList() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto bg-neutral-900 p-10 rounded-2xl shadow-2xl border border-neutral-800 mt-8">
-      <h2 className="text-3xl font-extrabold mb-8 text-white tracking-tight text-center">Team List</h2>
-      <div className="mb-6 flex flex-col md:flex-row md:items-center gap-4">
-        <label className="text-neutral-200 font-semibold">Filter by Department:</label>
-        <select
-          className="border border-neutral-700 bg-neutral-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition w-64"
-          value={selectedDept}
-          onChange={e => setSelectedDept(e.target.value)}
-        >
-          <option value="">All Departments</option>
-          {departments.map(dep => (
-            <option key={dep._id} value={dep._id}>{dep.name}</option>
-          ))}
-        </select>
+    <div className="max-w-7xl mx-auto p-10 mt-8">
+      <div className="bg-blue-500 text-white p-4 mb-4 rounded">
+        <h1 className="text-xl font-bold">TeamList Component is Working!</h1>
+        <p>Loading: {loading ? 'Yes' : 'No'}</p>
+        <p>Error: {error || 'None'}</p>
+        <p>Teams count: {teams.length}</p>
+        <p>Departments count: {departments.length}</p>
       </div>
-
-      {/* Selection Controls */}
-      {filteredTeams.length > 0 && (
-        <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between bg-neutral-800 p-4 rounded-lg">
-          <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 text-neutral-200">
-              <input
-                type="checkbox"
-                checked={selectedTeams.length === filteredTeams.length && filteredTeams.length > 0}
-                onChange={handleSelectAll}
-                className="w-4 h-4 text-blue-600 bg-neutral-700 border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
-              />
-              Select All
-            </label>
-            <span className="text-neutral-400">
-              {selectedTeams.length} of {filteredTeams.length} selected
-            </span>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-3xl font-extrabold text-center">Team List</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center gap-4">
+            <Label className="font-semibold">Filter by Department:</Label>
+            {departments.length > 0 && (
+              <Select value={selectedDept} onValueChange={setSelectedDept}>
+                <SelectTrigger className="w-64">
+                  <SelectValue placeholder="All Departments" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Departments</SelectItem>
+                  {departments.filter(dep => dep._id).map(dep => (
+                    <SelectItem key={dep._id} value={dep._id}>{dep.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
-          {selectedTeams.length > 0 && (
-            <button
-              onClick={handleDeleteSelected}
-              disabled={deleting}
-              className="bg-red-600 hover:bg-red-700 disabled:bg-red-800 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
-            >
-              {deleting ? 'Deleting...' : `Delete ${selectedTeams.length} Team(s)`}
-            </button>
-          )}
-        </div>
-      )}
 
-      {loading ? (
-        <div className="text-neutral-400">Loading teams...</div>
-      ) : error ? (
-        <div className="text-red-400 font-medium">{error}</div>
-      ) : filteredTeams.length === 0 ? (
-        <div className="text-neutral-400">No teams found.</div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full border border-neutral-800 rounded-xl overflow-hidden shadow">
-            <thead>
-              <tr className="bg-neutral-800">
-                <th className="px-4 py-2 border border-neutral-800 text-neutral-200 w-12">
-                  <input
-                    type="checkbox"
+          {/* Selection Controls */}
+          {filteredTeams.length > 0 && (
+            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-muted p-4 rounded-lg">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
                     checked={selectedTeams.length === filteredTeams.length && filteredTeams.length > 0}
-                    onChange={handleSelectAll}
-                    className="w-4 h-4 text-blue-600 bg-neutral-700 border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
+                    onCheckedChange={handleSelectAll}
                   />
-                </th>
-                <th className="px-4 py-2 border border-neutral-800 text-neutral-200">Team #</th>
-                <th className="px-4 py-2 border border-neutral-800 text-neutral-200">Project Title</th>
-                <th className="px-4 py-2 border border-neutral-800 text-neutral-200">Domain</th>
-                <th className="px-4 py-2 border border-neutral-800 text-neutral-200">Checkpoints</th>
-                <th className="px-4 py-2 border border-neutral-800 text-neutral-200">Completed</th>
-                <th className="px-4 py-2 border border-neutral-800 text-neutral-200">Details</th>
-                <th className="px-4 py-2 border border-neutral-800 text-neutral-200">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTeams.map((team, idx) => (
-                <tr key={team._id} className={`transition hover:bg-neutral-800 ${idx % 2 === 0 ? 'bg-neutral-900' : 'bg-neutral-950'}`}>
-                  <td className="px-4 py-2 border border-neutral-800 text-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedTeams.includes(team._id)}
-                      onChange={() => handleSelectTeam(team._id)}
-                      className="w-4 h-4 text-blue-600 bg-neutral-700 border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
-                    />
-                  </td>
-                  <td className="px-4 py-2 border border-neutral-800 text-center text-white">{team.teamNumber}</td>
-                  <td className="px-4 py-2 border border-neutral-800 text-white">{team.projectTitle || <span className="text-neutral-500">—</span>}</td>
-                  <td className="px-4 py-2 border border-neutral-800 text-white">{team.domain || <span className="text-neutral-500">—</span>}</td>
-                  <td className="px-4 py-2 border border-neutral-800 text-center">
-                    <CheckpointLine
-                      checkpoints={team.checkpoints}
-                      onToggle={cp => handleCheckpointChange(team._id, cp)}
-                      disabled={updating[team._id]}
-                    />
-                  </td>
-                  <td className="px-4 py-2 border border-neutral-800 text-center">
-                    {team.completed ? <span className="text-green-400 font-bold">✔</span> : <span className="text-neutral-500">—</span>}
-                  </td>
-                  <td className="px-4 py-2 border border-neutral-800 text-center">
-                    <a href={`/teams/${team._id}`} className="text-gray-300 hover:underline">View</a>
-                  </td>
-                  <td className="px-4 py-2 border border-neutral-800 text-center">
-                    <button
-                      onClick={() => handleDeleteSingle(team._id)}
-                      className="text-red-400 hover:text-red-300 underline text-sm"
-                      type="button"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {Object.entries(updateError).map(([teamId, msg]) => msg && (
-            <div key={teamId} className="text-red-400 font-medium mt-2">Team #{teams.find(t => t._id === teamId)?.teamNumber}: {msg}</div>
-          ))}
-        </div>
-      )}
+                  <Label>Select All</Label>
+                </div>
+                <span className="text-muted-foreground">
+                  {selectedTeams.length} of {filteredTeams.length} selected
+                </span>
+              </div>
+              {selectedTeams.length > 0 && (
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteSelected}
+                  disabled={deleting}
+                >
+                  {deleting ? 'Deleting...' : `Delete ${selectedTeams.length} Team(s)`}
+                </Button>
+              )}
+            </div>
+          )}
 
-      {/* Custom Confirmation Dialog */}
+          {loading ? (
+            <div className="text-muted-foreground text-center py-8">Loading teams...</div>
+          ) : error ? (
+            <div className="text-destructive font-medium text-center py-8">{error}</div>
+          ) : filteredTeams.length === 0 ? (
+            <div className="text-muted-foreground text-center py-8">No teams found.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={selectedTeams.length === filteredTeams.length && filteredTeams.length > 0}
+                        onCheckedChange={handleSelectAll}
+                      />
+                    </TableHead>
+                    <TableHead>Team #</TableHead>
+                    <TableHead>Project Title</TableHead>
+                    <TableHead>Project Description</TableHead>
+                    <TableHead>Domain</TableHead>
+                    <TableHead>Students</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Details</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredTeams.map((team) => (
+                    <TableRow key={team._id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedTeams.includes(team._id)}
+                          onCheckedChange={() => handleSelectTeam(team._id)}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">{team.teamNumber}</TableCell>
+                      <TableCell>
+                        {team.projectTitle || (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {team.projectDescription ? (
+                          <span className="truncate max-w-48 block" title={team.projectDescription}>
+                            {team.projectDescription}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {team.domain || (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {team.students?.length || 0} students
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {team.completed ? (
+                          <Badge variant="default" className="bg-green-600">Completed</Badge>
+                        ) : (
+                          <Badge variant="secondary">In Progress</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Button asChild variant="outline" size="sm">
+                          <Link to={`/teams/${team._id}`}>View</Link>
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteSingle(team._id)}
+                          disabled={deleting}
+                        >
+                          Delete
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}
-        title="Delete Team(s)"
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        title={confirmDialog.type === 'bulk' ? 'Delete Multiple Teams' : 'Delete Team'}
         message={getConfirmMessage()}
         confirmText="Delete"
         cancelText="Cancel"
         confirmColor="red"
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
       />
     </div>
   )

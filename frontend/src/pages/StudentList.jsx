@@ -222,10 +222,10 @@ export default function StudentList() {
                       </TableCell>
                       <TableCell className="font-medium">{student.name || 'Unnamed'}</TableCell>
                       <TableCell>
-                        {student.team ? (
-                          <Link to={`/teams/${student.team._id}`}>
+                        {student.teamId ? (
+                          <Link to={`/teams/${student.teamId._id}`}>
                             <Badge variant="outline" className="hover:bg-accent cursor-pointer">
-                              {student.team.teamNumber || 'N/A'}
+                              {student.teamId.teamNumber || 'N/A'}
                             </Badge>
                           </Link>
                         ) : (
@@ -233,9 +233,9 @@ export default function StudentList() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {student.team?.projectTitle ? (
-                          <span className="truncate max-w-32 block" title={student.team.projectTitle}>
-                            {student.team.projectTitle}
+                        {student.teamId?.projectTitle ? (
+                          <span className="truncate max-w-32 block" title={student.teamId.projectTitle}>
+                            {student.teamId.projectTitle}
                           </span>
                         ) : (
                           <span className="text-muted-foreground">No Project</span>

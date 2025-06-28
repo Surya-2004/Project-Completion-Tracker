@@ -7,7 +7,7 @@ const Department = require('../models/Department');
 // Add Team (with students)
 router.post('/', async (req, res) => {
   try {
-    const { projectTitle, domain, teamNumber, checkpoints, githubUrl, hostedUrl, students = [] } = req.body;
+    const { projectTitle, projectDescription, domain, teamNumber, githubUrl, hostedUrl, students = [] } = req.body;
 
     // Auto-increment teamNumber if not provided
     let newTeamNumber = teamNumber;
@@ -20,8 +20,8 @@ router.post('/', async (req, res) => {
     const team = new Team({
       teamNumber: newTeamNumber,
       projectTitle,
+      projectDescription,
       domain,
-      checkpoints: checkpoints || {},
       githubUrl,
       hostedUrl
     });
@@ -66,19 +66,6 @@ router.get('/', async (req, res) => {
     res.json(teams);
   } catch (err) {
     res.status(500).json({ error: err.message });
-  }
-});
-
-// Update Team Checkpoints
-router.patch('/:id/checkpoints', async (req, res) => {
-  try {
-    const team = await Team.findById(req.params.id);
-    if (!team) return res.status(404).json({ error: 'Team not found' });
-    team.checkpoints = { ...team.checkpoints, ...req.body };
-    await team.save();
-    res.json(team);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
   }
 });
 

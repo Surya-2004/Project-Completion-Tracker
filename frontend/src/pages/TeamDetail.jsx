@@ -45,7 +45,7 @@ export default function TeamDetail() {
   };
 
   if (loading) return (
-    <Card className="max-w-3xl mx-auto p-8">
+    <Card className="max-w-4xl mx-auto p-8 mt-8">
       <CardContent>
         <p className="text-muted-foreground">Loading team...</p>
       </CardContent>
@@ -53,7 +53,7 @@ export default function TeamDetail() {
   );
   
   if (error) return (
-    <Card className="max-w-3xl mx-auto p-8">
+    <Card className="max-w-4xl mx-auto p-8 mt-8">
       <CardContent>
         <p className="text-destructive font-medium">{error}</p>
       </CardContent>
@@ -63,7 +63,7 @@ export default function TeamDetail() {
   if (!team) return null;
 
   return (
-    <div className="max-w-3xl mx-auto p-8">
+    <div className="max-w-4xl mx-auto p-8 mt-8">
       <Card>
         <CardHeader>
           <CardTitle className="text-3xl font-extrabold tracking-tight">Team Detail</CardTitle>
@@ -84,68 +84,91 @@ export default function TeamDetail() {
             </div>
           </div>
 
-          <form onSubmit={handleSaveUrls} className="space-y-4">
+          {team.projectDescription && (
             <div className="space-y-2">
-              <Label htmlFor="githubUrl">GitHub URL</Label>
-              <Input
-                id="githubUrl"
-                type="url"
-                value={githubUrl}
-                onChange={e => setGithubUrl(e.target.value)}
-                placeholder="GitHub URL (optional)"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="hostedUrl">Hosted URL</Label>
-              <Input
-                id="hostedUrl"
-                type="url"
-                value={hostedUrl}
-                onChange={e => setHostedUrl(e.target.value)}
-                placeholder="Hosted URL (optional)"
-              />
-            </div>
-            <Button type="submit" disabled={saving}>
-              {saving ? 'Saving...' : 'Save Links'}
-            </Button>
-            {saveMsg && (
-              <div className={`font-medium ${saveMsg.includes('Failed') ? 'text-destructive' : 'text-green-600'}`}>
-                {saveMsg}
+              <Label className="text-muted-foreground">Project Description</Label>
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="text-sm leading-relaxed">{team.projectDescription}</p>
               </div>
-            )}
-          </form>
+            </div>
+          )}
 
           <div className="space-y-4">
-            <h3 className="text-lg font-bold">Team Members</h3>
+            <h3 className="text-lg font-bold">Project Links</h3>
+            <form onSubmit={handleSaveUrls} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="githubUrl">GitHub URL</Label>
+                  <Input
+                    id="githubUrl"
+                    type="url"
+                    value={githubUrl}
+                    onChange={e => setGithubUrl(e.target.value)}
+                    placeholder="GitHub URL (optional)"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="hostedUrl">Hosted URL</Label>
+                  <Input
+                    id="hostedUrl"
+                    type="url"
+                    value={hostedUrl}
+                    onChange={e => setHostedUrl(e.target.value)}
+                    placeholder="Hosted URL (optional)"
+                  />
+                </div>
+              </div>
+              <Button type="submit" disabled={saving}>
+                {saving ? 'Saving...' : 'Save Links'}
+              </Button>
+              {saveMsg && (
+                <div className={`font-medium ${saveMsg.includes('Failed') ? 'text-destructive' : 'text-green-600'}`}>
+                  {saveMsg}
+                </div>
+              )}
+            </form>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-bold">Team Members ({team.students?.length || 0})</h3>
             {team.students && team.students.length > 0 ? (
               <div className="grid gap-4">
                 {team.students.map(student => (
                   <Card key={student._id}>
-                    <CardContent className="p-4 space-y-2">
-                      <div className="font-semibold">{student.name || <span className="text-muted-foreground">—</span>}</div>
-                      <div className="text-muted-foreground">
-                        Department: {student.department?.name || <span className="text-muted-foreground">—</span>}
-                      </div>
-                      <div className="text-muted-foreground">
-                        Role: {student.role ? (
-                          <Badge variant="secondary">{student.role}</Badge>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </div>
-                      <div className="text-muted-foreground">
-                        Resume: {student.resumeUrl ? (
-                          <a
-                            href={student.resumeUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-500 hover:text-blue-400 underline"
-                          >
-                            View
-                          </a>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
+                    <CardContent className="p-4 space-y-3">
+                      <div className="font-semibold text-lg">{student.name || <span className="text-muted-foreground">Unnamed Student</span>}</div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <Label className="text-muted-foreground">Department</Label>
+                          <div>{student.department?.name || <span className="text-muted-foreground">—</span>}</div>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Role</Label>
+                          <div>
+                            {student.role ? (
+                              <Badge variant="secondary">{student.role}</Badge>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Resume</Label>
+                          <div>
+                            {student.resumeUrl ? (
+                              <a
+                                href={student.resumeUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-500 hover:text-blue-400 underline"
+                              >
+                                View Resume
+                              </a>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

@@ -1,5 +1,7 @@
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
 export default function DomainBarChart({ data }) {
@@ -35,9 +37,13 @@ export default function DomainBarChart({ data }) {
     },
   };
   return (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl p-6">
-      <div className="font-bold text-neutral-200 mb-2">Students per Domain</div>
-      <Bar data={chartData} options={options} />
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Students per Domain</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Bar data={chartData} options={options} />
+      </CardContent>
+    </Card>
   );
 } 

@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path');
 
 const departmentRoutes = require('./routes/department');
 const teamRoutes = require('./routes/team');
@@ -14,11 +15,19 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Routes
+// API Routes
 app.use('/api/departments', departmentRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/statistics', statisticsRoutes);
 app.use('/api/students', studentRoutes);
+
+// Serve static files from the React app
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
+// Handle React routing, return all requests to React app
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+});
 
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI, {

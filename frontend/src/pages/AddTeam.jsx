@@ -6,30 +6,15 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Textarea } from "@/components/ui/textarea"
 
 const defaultStudent = { name: '', department: '', role: '', resumeUrl: '' };
 
-function CustomCheckbox({ checked, onChange, disabled }) {
-  return (
-    <Checkbox
-      checked={checked}
-      onCheckedChange={onChange}
-      disabled={disabled}
-    />
-  );
-}
-
 export default function AddTeam() {
   const [projectTitle, setProjectTitle] = useState('');
+  const [projectDescription, setProjectDescription] = useState('');
   const [domain, setDomain] = useState('');
   const [teamNumber, setTeamNumber] = useState('');
-  const [checkpoints, setCheckpoints] = useState({
-    ideation: false,
-    workSplit: false,
-    localProjectDone: false,
-    projectHosted: false,
-  });
   const [githubUrl, setGithubUrl] = useState('');
   const [hostedUrl, setHostedUrl] = useState('');
   const [students, setStudents] = useState([{ ...defaultStudent }]);
@@ -51,19 +36,15 @@ export default function AddTeam() {
     if (students.length > 1) setStudents(students.filter((_, i) => i !== idx));
   };
 
-  const handleCheckpointChange = (field) => {
-    setCheckpoints(cp => ({ ...cp, [field]: !cp[field] }));
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       await api.post('/teams', {
         projectTitle,
+        projectDescription,
         domain,
         teamNumber: teamNumber ? Number(teamNumber) : undefined,
-        checkpoints,
         githubUrl,
         hostedUrl,
         students: students.map(s => ({
@@ -75,9 +56,9 @@ export default function AddTeam() {
       });
       toast.success('Team added successfully!');
       setProjectTitle('');
+      setProjectDescription('');
       setDomain('');
       setTeamNumber('');
-      setCheckpoints({ ideation: false, workSplit: false, localProjectDone: false, projectHosted: false });
       setGithubUrl('');
       setHostedUrl('');
       setStudents([{ ...defaultStudent }]);
@@ -129,16 +110,15 @@ export default function AddTeam() {
               </div>
             </div>
             
-            <div className="space-y-4">
-              <Label className="text-lg font-bold">Checkpoints</Label>
-              <div className="flex flex-wrap gap-6">
-                {Object.entries(checkpoints).map(([key, value]) => (
-                  <div key={key} className="flex items-center space-x-2">
-                    <CustomCheckbox checked={value} onChange={() => handleCheckpointChange(key)} />
-                    <Label className="capitalize cursor-pointer">{key.replace(/([A-Z])/g, ' $1')}</Label>
-                  </div>
-                ))}
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="projectDescription">Project Description</Label>
+              <Textarea
+                id="projectDescription"
+                value={projectDescription}
+                onChange={e => setProjectDescription(e.target.value)}
+                placeholder="Describe the project (optional)"
+                rows={4}
+              />
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

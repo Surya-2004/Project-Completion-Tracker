@@ -114,7 +114,25 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
+  
+  html {
     @apply bg-background text-foreground;
+  }
+  
+  body {
+    @apply bg-background text-foreground min-h-screen;
+  }
+  
+  #root {
+    @apply bg-background text-foreground min-h-screen;
+  }
+  
+  /* Force dark theme on all elements */
+  .dark {
+    @apply bg-background text-foreground;
+  }
+  
+  .dark * {
+    @apply border-border;
   }
 }

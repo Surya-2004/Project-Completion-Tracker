@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import StatCard from '../components/StatCard';
-import DomainBarChart from '../components/DomainBarChart';
 import DepartmentStatsTable from '../components/DepartmentStatsTable';
-import DepartmentCompletionBarChart from '../components/DepartmentCompletionBarChart';
-import CombinedCompletionBarChart from '../components/CombinedCompletionBarChart';
 import { useNavigate } from 'react-router-dom';
-import { Users, Plus, Building2, CheckCircle, XCircle } from 'lucide-react';
+import { Users, Plus, Building2, CheckCircle, XCircle, BarChart3 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 
 const icons = {
   students: <Users className="w-8 h-8" />,
@@ -15,6 +13,7 @@ const icons = {
   departments: <Building2 className="w-8 h-8" />,
   completed: <CheckCircle className="w-8 h-8" />,
   incomplete: <XCircle className="w-8 h-8" />,
+  bar: <BarChart3 className="w-8 h-8" />,
 };
 
 export default function Statistics() {
@@ -52,6 +51,9 @@ export default function Statistics() {
   
   if (!stats) return null;
 
+  // Prepare domain stats for shadcn/ui display
+  const domainStats = Object.entries(stats.studentsPerDomain || {}).map(([domain, count]) => ({ domain, count }));
+
   return (
     <div className="max-w-5xl mx-auto space-y-8">
       <Card>
@@ -67,17 +69,71 @@ export default function Statistics() {
         <StatCard label="Total Departments" value={stats.totalDepartments} icon={icons.departments} />
         <StatCard label="Completed Projects" value={stats.completedProjects} icon={icons.completed} />
       </div>
-      
-      <div className="grid md:grid-cols-2 gap-8">
-        <DomainBarChart data={stats.studentsPerDomain} />
-        <DepartmentStatsTable stats={stats.departmentStats} />
-      </div>
-      
-      <div className="grid md:grid-cols-2 gap-8">
-        <DepartmentCompletionBarChart data={deptCompletion} />
-        <CombinedCompletionBarChart completed={stats.completedProjects} notCompleted={stats.incompleteProjects} />
-      </div>
-      
+
+      {/* Domain Stats Summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Students per Domain</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-4">
+            {domainStats.length === 0 ? (
+              <span className="text-muted-foreground">No domain data</span>
+            ) : (
+              domainStats.map(({ domain, count }) => (
+                <div key={domain} className="flex flex-col items-center p-4 bg-muted rounded-lg min-w-[120px]">
+                  <span className="font-semibold text-lg text-foreground">{count}</span>
+                  <span className="text-muted-foreground text-sm mt-1">{domain}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Department Stats Table (already shadcn/ui) */}
+      <DepartmentStatsTable stats={stats.departmentStats} />
+
+      {/* Department Completion Summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Department Completion Rates</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-4">
+            {deptCompletion.length === 0 ? (
+              <span className="text-muted-foreground">No department completion data</span>
+            ) : (
+              deptCompletion.map(({ department, completionRate }) => (
+                <div key={department} className="flex flex-col items-center p-4 bg-muted rounded-lg min-w-[140px]">
+                  <span className="font-semibold text-lg text-foreground">{completionRate}%</span>
+                  <span className="text-muted-foreground text-sm mt-1">{department}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Overall Project Completion Summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Overall Project Completion</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
+            <div className="flex flex-col items-center p-4 bg-muted rounded-lg min-w-[160px]">
+              <span className="font-semibold text-2xl text-green-500">{stats.completedProjects}</span>
+              <span className="text-muted-foreground text-sm mt-1">Completed</span>
+            </div>
+            <div className="flex flex-col items-center p-4 bg-muted rounded-lg min-w-[160px]">
+              <span className="font-semibold text-2xl text-red-500">{stats.incompleteProjects}</span>
+              <span className="text-muted-foreground text-sm mt-1">Not Completed</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid md:grid-cols-2 gap-8">
         <button
           className="w-full"

@@ -12,8 +12,8 @@ const navItems = [
 export default function MainLayout({ children }) {
   const location = useLocation();
   return (
-    <div className="flex min-h-screen bg-background">
-      <aside className="w-60 bg-card text-card-foreground flex flex-col shadow-lg border-r">
+    <div className="flex min-h-screen bg-background text-foreground">
+      <aside className="w-60 bg-card text-card-foreground flex flex-col shadow-lg border-r border-border">
         <div className="flex items-center gap-2 p-6 text-2xl font-extrabold tracking-tight">
           <ClipboardCheck className="w-8 h-8" />
           <span>Project Tracker</span>
@@ -38,7 +38,7 @@ export default function MainLayout({ children }) {
         </nav>
         <div className="mt-auto p-4 text-xs text-muted-foreground opacity-70">&copy; {new Date().getFullYear()} Project Tracker</div>
       </aside>
-      <main className="flex-1 p-8 bg-background min-h-screen text-foreground">{children}</main>
+      <main className="flex-1 p-8 bg-background text-foreground min-h-screen">{children}</main>
     </div>
   );
 } 

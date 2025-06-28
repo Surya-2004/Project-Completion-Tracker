@@ -1,35 +1,27 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
-import StatCard from '../components/StatCard';
-import DepartmentStatsTable from '../components/DepartmentStatsTable';
 import { useNavigate } from 'react-router-dom';
-import { Users, Plus, Building2, CheckCircle, XCircle, BarChart3 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const icons = {
-  students: <Users className="w-8 h-8" />,
-  teams: <Plus className="w-8 h-8" />,
-  departments: <Building2 className="w-8 h-8" />,
-  completed: <CheckCircle className="w-8 h-8" />,
-  incomplete: <XCircle className="w-8 h-8" />,
-  bar: <BarChart3 className="w-8 h-8" />,
-};
+// Import new statistical components
+import GeneralStatsCards from '../components/GeneralStatsCards';
+import StageProgressChart from '../components/StageProgressChart';
+import ProjectCompletionPieChart from '../components/ProjectCompletionPieChart';
+import DepartmentStatsChart from '../components/DepartmentStatsChart';
+import DepartmentCompletionChart from '../components/DepartmentCompletionChart';
+import DomainStatsChart from '../components/DomainStatsChart';
+import EnhancedDepartmentStatsTable from '../components/EnhancedDepartmentStatsTable';
 
 export default function Statistics() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [deptCompletion, setDeptCompletion] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
     api.get('/statistics')
       .then(res => setStats(res.data))
-      .catch(() => setError('Failed to fetch statistics'));
-    api.get('/statistics/department-completion')
-      .then(res => setDeptCompletion(res.data))
-      .catch(() => setDeptCompletion([]))
+      .catch(() => setError('Failed to fetch statistics'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -51,104 +43,87 @@ export default function Statistics() {
   
   if (!stats) return null;
 
-  // Prepare domain stats for shadcn/ui display
-  const domainStats = Object.entries(stats.studentsPerDomain || {}).map(([domain, count]) => ({ domain, count }));
-
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="max-w-7xl mx-auto space-y-8">
+      {/* Header */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-3xl font-extrabold tracking-tight">Statistics</CardTitle>
-          <p className="text-muted-foreground">Visual insights into team, domain, and department progress</p>
+          <CardTitle className="text-3xl font-extrabold tracking-tight">📊 Project Statistics Dashboard</CardTitle>
+          <p className="text-muted-foreground">
+            Comprehensive insights into team progress, department performance, and project completion rates
+          </p>
         </CardHeader>
       </Card>
       
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-        <StatCard label="Total Students" value={stats.totalStudents} icon={icons.students} />
-        <StatCard label="Total Teams" value={stats.totalTeams} icon={icons.teams} />
-        <StatCard label="Total Departments" value={stats.totalDepartments} icon={icons.departments} />
-        <StatCard label="Completed Projects" value={stats.completedProjects} icon={icons.completed} />
+      {/* General Statistics Cards */}
+      <GeneralStatsCards stats={stats} />
+
+      {/* Project Completion Overview */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ProjectCompletionPieChart 
+          completedProjects={stats.completedProjects}
+          incompleteProjects={stats.incompleteProjects}
+        />
+        <StageProgressChart stageProgress={stats.stageProgress} />
       </div>
 
-      {/* Domain Stats Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Students per Domain</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-4">
-            {domainStats.length === 0 ? (
-              <span className="text-muted-foreground">No domain data</span>
-            ) : (
-              domainStats.map(({ domain, count }) => (
-                <div key={domain} className="flex flex-col items-center p-4 bg-muted rounded-lg min-w-[120px]">
-                  <span className="font-semibold text-lg text-foreground">{count}</span>
-                  <span className="text-muted-foreground text-sm mt-1">{domain}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Department Statistics */}
+      <div className="space-y-6">
+        <DepartmentStatsChart departmentStats={stats.departmentStats} />
+        <DepartmentCompletionChart departmentStats={stats.departmentStats} />
+      </div>
 
-      {/* Department Stats Table (already shadcn/ui) */}
-      <DepartmentStatsTable stats={stats.departmentStats} />
+      {/* Domain Statistics */}
+      <DomainStatsChart 
+        studentsPerDomain={stats.studentsPerDomain}
+        domainCompletionStats={stats.domainCompletionStats}
+        mostPopularDomain={stats.mostPopularDomain}
+      />
 
-      {/* Department Completion Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Department Completion Rates</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-4">
-            {deptCompletion.length === 0 ? (
-              <span className="text-muted-foreground">No department completion data</span>
-            ) : (
-              deptCompletion.map(({ department, completionRate }) => (
-                <div key={department} className="flex flex-col items-center p-4 bg-muted rounded-lg min-w-[140px]">
-                  <span className="font-semibold text-lg text-foreground">{completionRate}%</span>
-                  <span className="text-muted-foreground text-sm mt-1">{department}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Enhanced Department Stats Table */}
+      <EnhancedDepartmentStatsTable departmentStats={stats.departmentStats} />
 
-      {/* Overall Project Completion Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Overall Project Completion</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <div className="flex flex-col items-center p-4 bg-muted rounded-lg min-w-[160px]">
-              <span className="font-semibold text-2xl text-green-500">{stats.completedProjects}</span>
-              <span className="text-muted-foreground text-sm mt-1">Completed</span>
-            </div>
-            <div className="flex flex-col items-center p-4 bg-muted rounded-lg min-w-[160px]">
-              <span className="font-semibold text-2xl text-red-500">{stats.incompleteProjects}</span>
-              <span className="text-muted-foreground text-sm mt-1">Not Completed</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid md:grid-cols-2 gap-8">
-        <button
-          className="w-full"
+      {/* Quick Action Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card 
+          className="cursor-pointer hover:shadow-lg transition-shadow"
           onClick={() => navigate('/teams/incomplete')}
-          style={{ background: 'none', border: 'none', padding: 0 }}
         >
-          <StatCard label="Incomplete Projects" value={stats.incompleteProjects} icon={icons.incomplete} />
-        </button>
-        <button
-          className="w-full"
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-red-600">Incomplete Projects</h3>
+                <p className="text-2xl font-bold text-red-600">{stats.incompleteProjects}</p>
+                <p className="text-sm text-muted-foreground">View teams that need attention</p>
+              </div>
+              <div className="p-3 bg-red-50 rounded-full">
+                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="cursor-pointer hover:shadow-lg transition-shadow"
           onClick={() => navigate('/teams/completed')}
-          style={{ background: 'none', border: 'none', padding: 0 }}
         >
-          <StatCard label="Completed Projects" value={stats.completedProjects} icon={icons.completed} />
-        </button>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-green-600">Completed Projects</h3>
+                <p className="text-2xl font-bold text-green-600">{stats.completedProjects}</p>
+                <p className="text-sm text-muted-foreground">View successful teams</p>
+              </div>
+              <div className="p-3 bg-green-50 rounded-full">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ const Team = require('../models/Team');
 const Student = require('../models/Student');
 const Department = require('../models/Department');
 
-// Get statistics
+// Get comprehensive statistics
 router.get('/', async (req, res) => {
   try {
     // Total counts
@@ -14,9 +14,53 @@ router.get('/', async (req, res) => {
       Department.countDocuments()
     ]);
 
+    // Get all teams with populated data
+    const teams = await Team.find().populate({
+      path: 'students',
+      populate: { path: 'department', model: 'Department' }
+    });
+
     // Completed vs Incomplete projects
     const completedProjects = await Team.countDocuments({ completed: true });
     const incompleteProjects = await Team.countDocuments({ completed: false });
+
+    // Calculate completion percentage
+    const completionPercentage = totalTeams > 0 ? ((completedProjects / totalTeams) * 100).toFixed(1) : 0;
+
+    // Stage-wise progress count
+    const stageProgress = {
+      ideation: 0,
+      workSplit: 0,
+      localProject: 0,
+      hosting: 0
+    };
+
+    teams.forEach(team => {
+      if (team.checkpoints) {
+        team.checkpoints.forEach(checkpoint => {
+          if (checkpoint.completed) {
+            switch (checkpoint.name) {
+              case 'Ideation':
+                stageProgress.ideation++;
+                break;
+              case 'Work Split':
+                stageProgress.workSplit++;
+                break;
+              case 'Local Done':
+                stageProgress.localProject++;
+                break;
+              case 'Hosted':
+                stageProgress.hosting++;
+                break;
+            }
+          }
+        });
+      }
+    });
+
+    // Get unique project domains
+    const uniqueDomains = [...new Set(teams.map(team => team.domain).filter(Boolean))];
+    const totalProjectDomains = uniqueDomains.length;
 
     // Breakdown by domain (number of students per domain)
     const domainAgg = await Team.aggregate([
@@ -28,7 +72,29 @@ router.get('/', async (req, res) => {
       studentsPerDomain[d._id] = d.studentCount;
     });
 
-    // Breakdown by department: number of teams and students
+    // Domain completion stats
+    const domainCompletionStats = {};
+    uniqueDomains.forEach(domain => {
+      const domainTeams = teams.filter(team => team.domain === domain);
+      const completedDomainTeams = domainTeams.filter(team => team.completed);
+      domainCompletionStats[domain] = {
+        totalTeams: domainTeams.length,
+        completedTeams: completedDomainTeams.length,
+        completionRate: domainTeams.length > 0 ? ((completedDomainTeams.length / domainTeams.length) * 100).toFixed(1) : 0
+      };
+    });
+
+    // Find most popular domain
+    const domainTeamCounts = {};
+    teams.forEach(team => {
+      if (team.domain) {
+        domainTeamCounts[team.domain] = (domainTeamCounts[team.domain] || 0) + 1;
+      }
+    });
+    const mostPopularDomain = Object.keys(domainTeamCounts).reduce((a, b) => 
+      domainTeamCounts[a] > domainTeamCounts[b] ? a : b, null);
+
+    // Breakdown by department: number of teams, students, and completed projects
     const teamsAgg = await Team.aggregate([
       { $unwind: '$students' },
       { $lookup: {
@@ -46,14 +112,27 @@ router.get('/', async (req, res) => {
         }
       }
     ]);
-    // Get department names
+
+    // Get department names and calculate completion stats
     const departments = await Department.find();
     const departmentStats = teamsAgg.map(dep => {
       const dept = departments.find(d => d._id.equals(dep._id));
+      const deptTeams = teams.filter(team => 
+        team.students.some(stu => {
+          const depId = stu.department?._id || stu.department;
+          return depId && depId.equals(dep._id);
+        })
+      );
+      const completedDeptTeams = deptTeams.filter(team => team.completed);
+      const deptDomains = [...new Set(deptTeams.map(team => team.domain).filter(Boolean))];
+      
       return {
         department: dept ? dept.name : 'Unknown',
         teamCount: dep.teamCount.length,
-        studentCount: dep.studentCount
+        studentCount: dep.studentCount,
+        completedProjects: completedDeptTeams.length,
+        averageCompletion: deptTeams.length > 0 ? ((completedDeptTeams.length / deptTeams.length) * 100).toFixed(1) : 0,
+        domains: deptDomains
       };
     });
 
@@ -61,9 +140,14 @@ router.get('/', async (req, res) => {
       totalStudents,
       totalTeams,
       totalDepartments,
+      totalProjectDomains,
       completedProjects,
       incompleteProjects,
+      completionPercentage,
+      stageProgress,
       studentsPerDomain,
+      domainCompletionStats,
+      mostPopularDomain,
       departmentStats
     });
   } catch (err) {

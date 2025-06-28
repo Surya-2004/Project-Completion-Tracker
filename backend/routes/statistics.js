@@ -125,8 +125,8 @@ router.get('/incomplete-teams', async (req, res) => {
     }
     // Add checkpoint count
     const teamsWithCount = teams.map(team => {
-      const checkpoints = team.checkpoints || {};
-      const ticked = ['ideation', 'workSplit', 'localProjectDone', 'projectHosted'].filter(k => checkpoints[k]).length;
+      const checkpoints = team.checkpoints || [];
+      const ticked = checkpoints.filter(cp => cp.completed).length;
       return { ...team.toObject(), ticked };
     });
     // Sort by ticked descending
@@ -157,8 +157,8 @@ router.get('/completed-teams', async (req, res) => {
     }
     // Add checkpoint count
     const teamsWithCount = teams.map(team => {
-      const checkpoints = team.checkpoints || {};
-      const ticked = ['ideation', 'workSplit', 'localProjectDone', 'projectHosted'].filter(k => checkpoints[k]).length;
+      const checkpoints = team.checkpoints || [];
+      const ticked = checkpoints.filter(cp => cp.completed).length;
       return { ...team.toObject(), ticked };
     });
     // Sort by ticked descending

@@ -18,19 +18,29 @@ export default function DepartmentStatsTable({ stats }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Department</TableHead>
-              <TableHead>Students</TableHead>
-              <TableHead>Teams</TableHead>
-              <TableHead>Completion Rate</TableHead>
+              <TableHead className="text-center">Department</TableHead>
+              <TableHead className="text-center">Students</TableHead>
+              <TableHead className="text-center">Teams</TableHead>
+              <TableHead className="text-center">Completion Rate</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {stats.map((stat) => (
               <TableRow key={stat.department}>
-                <TableCell className="font-medium">{stat.department}</TableCell>
-                <TableCell>{stat.students}</TableCell>
-                <TableCell>{stat.teams}</TableCell>
-                <TableCell>{stat.completionRate}%</TableCell>
+                <TableCell className="text-center font-medium">{stat.department}</TableCell>
+                <TableCell className="text-center">{stat.students}</TableCell>
+                <TableCell className="text-center">{stat.teams}</TableCell>
+                <TableCell className="text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-16 bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full"
+                        style={{ width: `${stat.completionRate}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm text-muted-foreground">{stat.completionRate}%</span>
+                  </div>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

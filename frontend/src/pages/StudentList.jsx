@@ -197,31 +197,31 @@ export default function StudentList() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-12">
+                    <TableHead className="w-12 text-center">
                       <Checkbox
                         checked={selectedStudents.length === students.length && students.length > 0}
                         onCheckedChange={handleSelectAll}
                       />
                     </TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Team #</TableHead>
-                    <TableHead>Project</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Resume</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="text-center">Name</TableHead>
+                    <TableHead className="text-center">Team #</TableHead>
+                    <TableHead className="text-center">Project</TableHead>
+                    <TableHead className="text-center">Role</TableHead>
+                    <TableHead className="text-center">Resume</TableHead>
+                    <TableHead className="text-center">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {students.map((student) => (
                     <TableRow key={student._id}>
-                      <TableCell>
+                      <TableCell className="text-center">
                         <Checkbox
                           checked={selectedStudents.includes(student._id)}
                           onCheckedChange={() => handleSelectStudent(student._id)}
                         />
                       </TableCell>
-                      <TableCell className="font-medium">{student.name || 'Unnamed'}</TableCell>
-                      <TableCell>
+                      <TableCell className="font-medium text-center">{student.name || 'Unnamed'}</TableCell>
+                      <TableCell className="text-center">
                         {student.teamId ? (
                           <Link to={`/teams/${student.teamId._id}`}>
                             <Badge variant="outline" className="hover:bg-accent cursor-pointer">
@@ -232,7 +232,7 @@ export default function StudentList() {
                           <span className="text-muted-foreground">No Team</span>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-center">
                         {student.teamId?.projectTitle ? (
                           <span className="truncate max-w-32 block" title={student.teamId.projectTitle}>
                             {student.teamId.projectTitle}
@@ -241,16 +241,16 @@ export default function StudentList() {
                           <span className="text-muted-foreground">No Project</span>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-center">
                         {student.role ? (
                           <Badge variant="secondary">{student.role}</Badge>
                         ) : (
                           <span className="text-muted-foreground">No Role</span>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-center">
                         {editingId === student._id ? (
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 justify-center">
                             <Input
                               value={resumeInput}
                               onChange={(e) => setResumeInput(e.target.value)}
@@ -273,7 +273,7 @@ export default function StudentList() {
                             </Button>
                           </div>
                         ) : (
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 justify-center">
                             {student.resumeUrl ? (
                               <a
                                 href={student.resumeUrl}
@@ -296,7 +296,7 @@ export default function StudentList() {
                           </div>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-center">
                         <Button
                           size="sm"
                           variant="destructive"

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ConfirmDialog';
+import CheckpointProgressBar from '../components/CheckpointProgressBar';
 import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -154,14 +155,6 @@ export default function TeamList() {
 
   return (
     <div className="max-w-7xl mx-auto p-10 mt-8">
-      <div className="bg-blue-500 text-white p-4 mb-4 rounded">
-        <h1 className="text-xl font-bold">TeamList Component is Working!</h1>
-        <p>Loading: {loading ? 'Yes' : 'No'}</p>
-        <p>Error: {error || 'None'}</p>
-        <p>Teams count: {teams.length}</p>
-        <p>Departments count: {departments.length}</p>
-      </div>
-      
       <Card>
         <CardHeader>
           <CardTitle className="text-3xl font-extrabold text-center">Team List</CardTitle>
@@ -222,69 +215,53 @@ export default function TeamList() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-12">
+                    <TableHead className="w-12 text-center">
                       <Checkbox
                         checked={selectedTeams.length === filteredTeams.length && filteredTeams.length > 0}
                         onCheckedChange={handleSelectAll}
                       />
                     </TableHead>
-                    <TableHead>Team #</TableHead>
-                    <TableHead>Project Title</TableHead>
-                    <TableHead>Project Description</TableHead>
-                    <TableHead>Domain</TableHead>
-                    <TableHead>Students</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Details</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="text-center">Team #</TableHead>
+                    <TableHead className="text-center">Project Title</TableHead>
+                    <TableHead className="text-center">Domain</TableHead>
+                    <TableHead className="text-center">Checkpoints</TableHead>
+                    <TableHead className="text-center">Details</TableHead>
+                    <TableHead className="text-center">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredTeams.map((team) => (
                     <TableRow key={team._id}>
-                      <TableCell>
+                      <TableCell className="text-center">
                         <Checkbox
                           checked={selectedTeams.includes(team._id)}
                           onCheckedChange={() => handleSelectTeam(team._id)}
                         />
                       </TableCell>
-                      <TableCell className="font-medium">{team.teamNumber}</TableCell>
-                      <TableCell>
+                      <TableCell className="font-medium text-center">{team.teamNumber}</TableCell>
+                      <TableCell className="text-center">
                         {team.projectTitle || (
                           <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell>
-                        {team.projectDescription ? (
-                          <span className="truncate max-w-48 block" title={team.projectDescription}>
-                            {team.projectDescription}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
+                      <TableCell className="text-center">
                         {team.domain || (
                           <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {team.students?.length || 0} students
-                        </Badge>
+                      <TableCell className="text-center">
+                        <CheckpointProgressBar
+                          checkpoints={team.checkpoints}
+                          teamId={team._id}
+                          onRefresh={fetchTeams}
+                        />
                       </TableCell>
-                      <TableCell>
-                        {team.completed ? (
-                          <Badge variant="default" className="bg-green-600">Completed</Badge>
-                        ) : (
-                          <Badge variant="secondary">In Progress</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
+                      <TableCell className="text-center">
                         <Button asChild variant="outline" size="sm">
                           <Link to={`/teams/${team._id}`}>View</Link>
                         </Button>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-center">
                         <Button
                           variant="destructive"
                           size="sm"

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
+import CheckpointProgressBar from '../components/CheckpointProgressBar';
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,16 +19,18 @@ export default function TeamDetail() {
   const [saveMsg, setSaveMsg] = useState('');
 
   useEffect(() => {
-    setLoading(true);
     api.get(`/teams/${id}`)
       .then(res => {
         setTeam(res.data);
         setGithubUrl(res.data.githubUrl || '');
         setHostedUrl(res.data.hostedUrl || '');
       })
-      .catch(() => setError('Failed to fetch team'))
-      .finally(() => setLoading(false));
-  }, [id]);
+      .catch((err) => {
+        console.error('Error fetching team:', err);
+        setError('Failed to fetch team');
+      })
+      .finally(() => setLoading(false))
+  }, [id])
 
   const handleSaveUrls = async (e) => {
     e.preventDefault();
@@ -41,6 +44,15 @@ export default function TeamDetail() {
       setSaveMsg('Failed to update links');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const refreshTeam = async () => {
+    try {
+      const res = await api.get(`/teams/${id}`);
+      setTeam(res.data);
+    } catch (err) {
+      console.error('Error refreshing team:', err);
     }
   };
 
@@ -177,6 +189,15 @@ export default function TeamDetail() {
             ) : (
               <div className="text-muted-foreground">No students found.</div>
             )}
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-bold">Checkpoints</h3>
+            <CheckpointProgressBar
+              checkpoints={team.checkpoints}
+              teamId={team._id}
+              onRefresh={refreshTeam}
+            />
           </div>
         </CardContent>
       </Card>

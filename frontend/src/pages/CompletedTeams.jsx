@@ -70,26 +70,28 @@ export default function CompletedTeams() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Team #</TableHead>
-                    <TableHead>Project Title</TableHead>
-                    <TableHead>Domain</TableHead>
-                    <TableHead>Checkpoints Ticked</TableHead>
-                    <TableHead>Departments</TableHead>
-                    <TableHead>Details</TableHead>
+                    <TableHead className="text-center">Team #</TableHead>
+                    <TableHead className="text-center">Project Title</TableHead>
+                    <TableHead className="text-center">Domain</TableHead>
+                    <TableHead className="text-center">Checkpoints Ticked</TableHead>
+                    <TableHead className="text-center">Departments</TableHead>
+                    <TableHead className="text-center">Details</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {teams.map((team) => (
                     <TableRow key={team._id}>
                       <TableCell className="text-center font-medium">{team.teamNumber}</TableCell>
-                      <TableCell>{team.projectTitle || <span className="text-muted-foreground">—</span>}</TableCell>
-                      <TableCell>{team.domain || <span className="text-muted-foreground">—</span>}</TableCell>
+                      <TableCell className="text-center">{team.projectTitle || <span className="text-muted-foreground">—</span>}</TableCell>
+                      <TableCell className="text-center">{team.domain || <span className="text-muted-foreground">—</span>}</TableCell>
                       <TableCell className="text-center">
-                        <Badge variant="default" className="bg-green-600 hover:bg-green-700">
-                          {team.ticked}
-                        </Badge>
+                        <div className="flex justify-center">
+                          <Badge variant="default" className="bg-green-600 hover:bg-green-700 w-full">
+                            {team.ticked}
+                          </Badge>
+                        </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-center">
                         {Array.from(new Set((team.students || []).map(stu => stu.department?.name || stu.department))).filter(Boolean).join(', ') || <span className="text-muted-foreground">—</span>}
                       </TableCell>
                       <TableCell className="text-center">

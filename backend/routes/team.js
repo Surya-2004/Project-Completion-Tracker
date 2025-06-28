@@ -158,4 +158,54 @@ router.delete('/', async (req, res) => {
   }
 });
 
+// PATCH /api/teams/:id/checkpoints/bulk
+// Update multiple checkpoints at once for cascading behavior
+router.patch('/:id/checkpoints/bulk', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { updates } = req.body; // Array of { index, completed }
+    
+    const team = await Team.findById(id);
+    if (!team) return res.status(404).json({ error: 'Team not found' });
+    
+    if (!Array.isArray(updates)) {
+      return res.status(400).json({ error: 'Updates must be an array' });
+    }
+    
+    // Apply all updates
+    updates.forEach(({ index, completed }) => {
+      if (team.checkpoints && team.checkpoints[index]) {
+        team.checkpoints[index].completed = completed;
+      }
+    });
+    // Set completed field based on checkpoints
+    team.completed = team.checkpoints.every(cp => cp.completed);
+    
+    await team.save();
+    res.json(team);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// PATCH /api/teams/:id/checkpoints/:checkpointIndex
+router.patch('/:id/checkpoints/:checkpointIndex', async (req, res) => {
+  try {
+    const { id, checkpointIndex } = req.params;
+    const { completed } = req.body;
+    const team = await Team.findById(id);
+    if (!team) return res.status(404).json({ error: 'Team not found' });
+    if (!team.checkpoints || team.checkpoints.length <= checkpointIndex) {
+      return res.status(400).json({ error: 'Invalid checkpoint index' });
+    }
+    team.checkpoints[checkpointIndex].completed = completed;
+    // Set completed field based on checkpoints
+    team.completed = team.checkpoints.every(cp => cp.completed);
+    await team.save();
+    res.json(team);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 module.exports = router; 

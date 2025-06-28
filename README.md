@@ -36,7 +36,7 @@ A full-stack web application for tracking project completion status across teams
 
 1. **Clone the repository**
    ```bash
-   git clone [<your-repo-url>](https://github.com/Surya-2004/Project-Completion-Tracker.git)
+   git clone https://github.com/Surya-2004/Project-Completion-Tracker.git
    cd Project-Completion-Tracker
    ```
 

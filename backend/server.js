@@ -4,10 +4,13 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 
+const authRoutes = require('./routes/auth');
 const departmentRoutes = require('./routes/department');
 const teamRoutes = require('./routes/team');
 const statisticsRoutes = require('./routes/statistics');
 const studentRoutes = require('./routes/student');
+const interviewRoutes = require('./routes/interview');
+const auth = require('./middleware/auth');
 
 const app = express();
 
@@ -15,11 +18,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// API routes
-app.use('/api/departments', departmentRoutes);
-app.use('/api/teams', teamRoutes);
-app.use('/api/statistics', statisticsRoutes);
-app.use('/api/students', studentRoutes);
+// Auth routes (no authentication required)
+app.use('/api/auth', authRoutes);
+
+// Protected API routes (authentication required)
+app.use('/api/departments', auth, departmentRoutes);
+app.use('/api/teams', auth, teamRoutes);
+app.use('/api/statistics', auth, statisticsRoutes);
+app.use('/api/students', auth, studentRoutes);
+app.use('/api/interviews', auth, interviewRoutes);
 
 // Serve static files from the React app
 app.use(express.static(path.join(__dirname, '../frontend/dist')));

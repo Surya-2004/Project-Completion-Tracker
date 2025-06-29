@@ -7,8 +7,15 @@ const Team = require('../models/Team');
 router.get('/', async (req, res) => {
   try {
     const { department } = req.query;
-    const filter = department ? { department } : {};
+    const filter = { organization: req.user.organization };
+    if (department) filter.department = department;
+    
     const students = await Student.find(filter)
+      .populate({
+        path: 'department',
+        model: 'Department',
+        select: 'name'
+      })
       .populate({
         path: 'teamId',
         select: 'teamNumber projectTitle'
@@ -19,12 +26,39 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/students/:id (get single student)
+router.get('/:id', async (req, res) => {
+  try {
+    const student = await Student.findOne({ 
+      _id: req.params.id, 
+      organization: req.user.organization 
+    })
+      .populate({
+        path: 'department',
+        model: 'Department',
+        select: 'name'
+      })
+      .populate({
+        path: 'teamId',
+        select: 'teamNumber projectTitle'
+      });
+    
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+    
+    res.json(student);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PATCH /api/students/:id (update resumeUrl)
 router.patch('/:id', async (req, res) => {
   try {
     const { resumeUrl } = req.body;
-    const student = await Student.findByIdAndUpdate(
-      req.params.id,
+    const student = await Student.findOneAndUpdate(
+      { _id: req.params.id, organization: req.user.organization },
       { resumeUrl },
       { new: true }
     ).populate({
@@ -41,14 +75,20 @@ router.patch('/:id', async (req, res) => {
 // DELETE /api/students/:id (delete single student)
 router.delete('/:id', async (req, res) => {
   try {
-    const student = await Student.findById(req.params.id);
+    const student = await Student.findOne({ 
+      _id: req.params.id, 
+      organization: req.user.organization 
+    });
     if (!student) {
       return res.status(404).json({ error: 'Student not found' });
     }
 
     // Remove student from team
     if (student.teamId) {
-      const team = await Team.findById(student.teamId);
+      const team = await Team.findOne({ 
+        _id: student.teamId, 
+        organization: req.user.organization 
+      });
       if (team) {
         team.students = team.students.filter(s => s.toString() !== student._id.toString());
         
@@ -79,8 +119,11 @@ router.delete('/', async (req, res) => {
       return res.status(400).json({ error: 'Student IDs array is required' });
     }
 
-    // Get all students to be deleted
-    const students = await Student.find({ _id: { $in: studentIds } });
+    // Get all students to be deleted (only from user's organization)
+    const students = await Student.find({ 
+      _id: { $in: studentIds },
+      organization: req.user.organization
+    });
     
     // Group students by team for efficient processing
     const teamStudents = {};
@@ -95,7 +138,10 @@ router.delete('/', async (req, res) => {
 
     // Update teams and delete empty ones
     for (const [teamId, studentIdsToRemove] of Object.entries(teamStudents)) {
-      const team = await Team.findById(teamId);
+      const team = await Team.findOne({ 
+        _id: teamId, 
+        organization: req.user.organization 
+      });
       if (team) {
         team.students = team.students.filter(s => 
           !studentIdsToRemove.some(id => id.toString() === s.toString())
@@ -111,11 +157,14 @@ router.delete('/', async (req, res) => {
     }
 
     // Delete all students
-    await Student.deleteMany({ _id: { $in: studentIds } });
+    await Student.deleteMany({ 
+      _id: { $in: studentIds },
+      organization: req.user.organization
+    });
     
     res.json({ 
-      message: `${studentIds.length} student(s) deleted successfully`,
-      deletedCount: studentIds.length
+      message: `${students.length} student(s) deleted successfully`,
+      deletedCount: students.length
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

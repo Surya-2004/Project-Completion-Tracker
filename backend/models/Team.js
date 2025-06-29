@@ -9,6 +9,7 @@ const TeamSchema = new mongoose.Schema({
   completed: { type: Boolean, default: false },
   githubUrl: { type: String },
   hostedUrl: { type: String },
+  organization: { type: String, required: true },
   checkpoints: {
     type: [
       {

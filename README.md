@@ -1,227 +1,199 @@
 # Project Completion Tracker
 
-A full-stack web application for tracking project completion status across teams and departments.
+A comprehensive MERN stack admin dashboard for tracking student group project completion and conducting interviews.
 
 ## Features
 
-- Team management with project details
-- Student registration and role assignment
-- Department-wise statistics
-- Project completion tracking
-- Dark theme UI with shadcn/ui components
+### Core Project Management
+- **Department Management**: Create and manage academic departments
+- **Student Management**: Add students to departments with roles and team assignments
+- **Team Management**: Create teams, assign projects, and track completion status
+- **Project Tracking**: Monitor project progress through checkpoints (Ideation, Work Split, Local Done, Hosted)
+- **Statistics Dashboard**: Comprehensive analytics and reporting
+
+### 🆕 Interview Module
+- **Student Interviews**: Conduct individual student interviews with detailed metrics
+- **Team Interviews**: Interview entire teams at once with individual student scoring
+- **Interview Statistics**: Comprehensive analysis of interview performance
+- **Performance Tracking**: Track interview scores across departments and teams
+
+## Interview Metrics
+
+The interview system evaluates students across 10 key metrics (all optional, scored 1-10):
+
+1. **Self Introduction** - How well the student introduces themselves
+2. **Communication Skills** - Clarity and effectiveness of communication
+3. **Confidence Level** - Student's confidence during the interview
+4. **DSA Knowledge** - Understanding of Data Structures and Algorithms
+5. **Problem Solving** - Ability to approach and solve problems
+6. **Project Understanding** - Understanding of their project
+7. **Tech Stack Knowledge** - Knowledge of technologies used
+8. **Role Explanation** - How well they explain their role
+9. **Teamwork** - Understanding of teamwork and collaboration
+10. **Adaptability** - Ability to adapt to new situations
 
 ## Tech Stack
 
-### Frontend
-- React 19
-- Vite
-- Tailwind CSS
-- shadcn/ui components
-- Lucide React icons
-- React Router DOM
-
 ### Backend
-- Node.js
-- Express.js
-- MongoDB with Mongoose
-- CORS enabled
+- **Node.js** with Express.js
+- **MongoDB** with Mongoose ODM
+- **RESTful API** architecture
 
-## Local Development
+### Frontend
+- **React 19** with Vite
+- **Tailwind CSS** for styling
+- **Radix UI** components
+- **Lucide React** icons
+- **Chart.js** for data visualization
+- **React Router** for navigation
+
+## API Endpoints
+
+### Core Endpoints
+- `GET/POST /api/departments` - Department management
+- `GET/POST /api/students` - Student management
+- `GET/POST /api/teams` - Team management
+- `GET /api/statistics` - Project statistics
+
+### 🆕 Interview Endpoints
+- `POST /api/interviews/student/:studentId` - Add/edit student interview
+- `POST /api/interviews/team/:teamId` - Add/edit team interviews
+- `GET /api/interviews/student/:studentId` - Get student interview results
+- `GET /api/interviews/team/:teamId` - Get team interview results
+- `GET /api/interviews/department/:departmentId` - Get department interview stats
+- `GET /api/interviews/stats/overview` - Get overall interview statistics
+
+## Database Schema
+
+### InterviewScore Collection
+```javascript
+{
+  studentId: ObjectId,      // Reference to Student
+  teamId: ObjectId,         // Reference to Team (optional)
+  metrics: {
+    selfIntro: Number,      // 1-10
+    communication: Number,  // 1-10
+    confidence: Number,     // 1-10
+    dsa: Number,           // 1-10
+    problemSolving: Number, // 1-10
+    projectUnderstanding: Number, // 1-10
+    techStack: Number,     // 1-10
+    roleExplanation: Number, // 1-10
+    teamwork: Number,      // 1-10
+    adaptability: Number   // 1-10
+  },
+  totalScore: Number,       // Auto-calculated
+  averageScore: Number,     // Auto-calculated
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+## Installation & Setup
 
 ### Prerequisites
 - Node.js (v18 or higher)
-- MongoDB (local or cloud)
+- MongoDB
+- npm or yarn
 
-### Setup
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/Surya-2004/Project-Completion-Tracker.git
-   cd Project-Completion-Tracker
-   ```
-
-2. **Install dependencies**
-   ```bash
-   # Install backend dependencies
-   cd backend
-   npm install
-   
-   # Install frontend dependencies
-   cd ../frontend
-   npm install
-   ```
-
-3. **Set up environment variables**
-   
-   Create a `.env` file in the backend directory:
-   ```env
-   MONGODB_URI=mongodb://localhost:27017/project-tracker
-   PORT=5000
-   ```
-
-4. **Start the development servers**
-   ```bash
-   # Start backend (from backend directory)
-   npm start
-   
-   # Start frontend (from frontend directory)
-   npm run dev
-   ```
-
-5. **Access the application**
-   - Frontend: http://localhost:5173
-   - Backend API: http://localhost:5000
-
-## Deployment on Render
-
-### Step 1: Prepare Your Repository
-
-1. **Push your code to GitHub**
-   ```bash
-   git add .
-   git commit -m "Prepare for deployment"
-   git push origin main
-   ```
-
-2. **Ensure your repository structure looks like this:**
-   ```
-   Project-Completion-Tracker/
-   ├── backend/
-   │   ├── server.js
-   │   ├── package.json
-   │   ├── routes/
-   │   ├── models/
-   │   └── ...
-   ├── frontend/
-   │   ├── src/
-   │   ├── package.json
-   │   └── ...
-   ├── render.yaml
-   └── README.md
-   ```
-
-### Step 2: Set Up MongoDB Atlas
-
-1. **Create a MongoDB Atlas account** (if you don't have one)
-   - Go to [MongoDB Atlas](https://www.mongodb.com/atlas)
-   - Sign up for a free account
-
-2. **Create a new cluster**
-   - Choose the free tier (M0)
-   - Select your preferred cloud provider and region
-   - Click "Create"
-
-3. **Set up database access**
-   - Go to "Database Access" in the left sidebar
-   - Click "Add New Database User"
-   - Create a username and password (save these!)
-   - Select "Read and write to any database"
-   - Click "Add User"
-
-4. **Set up network access**
-   - Go to "Network Access" in the left sidebar
-   - Click "Add IP Address"
-   - Click "Allow Access from Anywhere" (for Render deployment)
-   - Click "Confirm"
-
-5. **Get your connection string**
-   - Go to "Database" in the left sidebar
-   - Click "Connect"
-   - Choose "Connect your application"
-   - Copy the connection string
-   - Replace `<password>` with your actual password
-   - Replace `<dbname>` with `project-tracker`
-
-### Step 3: Deploy on Render
-
-1. **Sign up for Render**
-   - Go to [Render](https://render.com)
-   - Sign up with your GitHub account
-
-2. **Create a new Web Service**
-   - Click "New +" and select "Web Service"
-   - Connect your GitHub repository
-   - Select the repository you just pushed
-
-3. **Configure the service**
-   - **Name**: `project-completion-tracker` (or any name you prefer)
-   - **Environment**: `Node`
-   - **Region**: Choose the closest to your users
-   - **Branch**: `main`
-   - **Build Command**: `cd backend && npm install && npm run build`
-   - **Start Command**: `cd backend && npm start`
-
-4. **Add Environment Variables**
-   - Click "Environment" in the left sidebar
-   - Add the following variables:
-     - **Key**: `MONGODB_URI`
-     - **Value**: Your MongoDB Atlas connection string
-     - **Key**: `NODE_ENV`
-     - **Value**: `production`
-
-5. **Deploy**
-   - Click "Create Web Service"
-   - Render will automatically build and deploy your application
-   - Wait for the build to complete (this may take 5-10 minutes)
-
-### Step 4: Verify Deployment
-
-1. **Check the deployment logs**
-   - In your Render dashboard, click on your service
-   - Go to the "Logs" tab to see build and runtime logs
-
-2. **Test your application**
-   - Once deployed, Render will provide you with a URL
-   - Visit the URL to test your application
-   - Try creating a department, adding teams, etc.
-
-3. **Set up custom domain (optional)**
-   - In your Render service settings, go to "Settings"
-   - Under "Custom Domains", add your domain
-   - Configure DNS as instructed by Render
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Build fails**
-   - Check the build logs in Render
-   - Ensure all dependencies are in package.json
-   - Verify the build command is correct
-
-2. **MongoDB connection fails**
-   - Verify your MongoDB Atlas connection string
-   - Ensure network access allows connections from anywhere
-   - Check that your database user has the correct permissions
-
-3. **Frontend not loading**
-   - Check that the frontend build completed successfully
-   - Verify the static file serving is working
-   - Check browser console for errors
-
-4. **API calls failing**
-   - Ensure the API base URL is correctly configured
-   - Check that CORS is properly set up
-   - Verify all API routes are working
-
-### Useful Commands
-
+### Backend Setup
 ```bash
-# Test the build locally
 cd backend
-npm run build
-
-# Test the production server locally
-cd backend
+npm install
 npm start
-
-# Check if MongoDB is accessible
-mongosh "your-connection-string"
 ```
+
+### Frontend Setup
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### Environment Variables
+Create a `.env` file in the backend directory:
+```env
+MONGODB_URI=your_mongodb_connection_string
+PORT=5000
+```
+
+## Usage
+
+### Interview Workflow
+
+1. **Access Interview Dashboard**
+   - Navigate to "Interviews" in the main navigation
+   - Choose between "Interview Students" or "Interview Teams" tabs
+
+2. **Conduct Student Interview**
+   - Search and select a student
+   - Fill in interview metrics (all fields optional)
+   - Scores are auto-calculated
+   - Save interview results
+
+3. **Conduct Team Interview**
+   - Select a team to interview all members
+   - Fill in metrics for each student
+   - View team statistics and individual scores
+   - Save all interviews at once
+
+4. **View Interview Statistics**
+   - Access comprehensive analytics
+   - View performance by student, team, or department
+   - Compare scores and identify top performers
+
+### Key Features
+
+- **Flexible Scoring**: All interview metrics are optional
+- **Auto-calculation**: Total and average scores calculated automatically
+- **Real-time Updates**: Immediate feedback on score changes
+- **Comprehensive Analytics**: Detailed statistics and performance analysis
+- **Team Comparison**: Compare individual performance within teams
+- **Department Analysis**: Track performance across departments
+
+## Project Structure
+
+```
+Project-Completion-Tracker/
+├── backend/
+│   ├── models/
+│   │   ├── Department.js
+│   │   ├── Student.js
+│   │   ├── Team.js
+│   │   └── InterviewScore.js          # 🆕 Interview model
+│   ├── routes/
+│   │   ├── department.js
+│   │   ├── student.js
+│   │   ├── team.js
+│   │   ├── statistics.js
+│   │   └── interview.js               # 🆕 Interview routes
+│   └── server.js
+├── frontend/
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── InterviewDashboard.jsx     # 🆕 Main interview page
+│   │   │   ├── StudentInterviewForm.jsx   # 🆕 Student interview form
+│   │   │   ├── TeamInterviewForm.jsx      # 🆕 Team interview form
+│   │   │   ├── InterviewStatistics.jsx    # 🆕 Interview analytics
+│   │   │   ├── StudentInterviewView.jsx   # 🆕 View student results
+│   │   │   └── TeamInterviewView.jsx      # 🆕 View team results
+│   │   ├── services/
+│   │   │   └── api.js                      # 🆕 Updated with interview API
+│   │   └── components/
+│   │       └── ui/                         # 🆕 Additional UI components
+└── README.md
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+
 
 ## Support
 
-If you encounter any issues during deployment, check:
-1. Render's [documentation](https://render.com/docs)
-2. MongoDB Atlas [documentation](https://docs.atlas.mongodb.com/)
-3. The application logs in Render dashboard
+For support or questions, please open an issue in the repository.

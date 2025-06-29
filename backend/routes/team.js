@@ -12,7 +12,7 @@ router.post('/', async (req, res) => {
     // Auto-increment teamNumber if not provided
     let newTeamNumber = teamNumber;
     if (!newTeamNumber) {
-      const lastTeam = await Team.findOne().sort({ teamNumber: -1 });
+      const lastTeam = await Team.findOne({ organization: req.user.organization }).sort({ teamNumber: -1 });
       newTeamNumber = lastTeam ? lastTeam.teamNumber + 1 : 1;
     }
 
@@ -23,7 +23,8 @@ router.post('/', async (req, res) => {
       projectDescription,
       domain,
       githubUrl,
-      hostedUrl
+      hostedUrl,
+      organization: req.user.organization
     });
     await team.save();
 
@@ -35,7 +36,8 @@ router.post('/', async (req, res) => {
         department: s.department,
         role: s.role,
         resumeUrl: s.resumeUrl,
-        teamId: team._id
+        teamId: team._id,
+        organization: req.user.organization
       });
       await student.save();
       studentIds.push(student._id);
@@ -58,7 +60,7 @@ router.post('/', async (req, res) => {
 // List Teams
 router.get('/', async (req, res) => {
   try {
-    const teams = await Team.find()
+    const teams = await Team.find({ organization: req.user.organization })
       .populate({
         path: 'students',
         populate: { path: 'department', model: 'Department' }
@@ -72,11 +74,13 @@ router.get('/', async (req, res) => {
 // Get Team Detail
 router.get('/:id', async (req, res) => {
   try {
-    const team = await Team.findById(req.params.id)
-      .populate({
-        path: 'students',
-        populate: { path: 'department', model: 'Department' }
-      });
+    const team = await Team.findOne({ 
+      _id: req.params.id, 
+      organization: req.user.organization 
+    }).populate({
+      path: 'students',
+      populate: { path: 'department', model: 'Department' }
+    });
     if (!team) return res.status(404).json({ error: 'Team not found' });
     res.json(team);
   } catch (err) {
@@ -87,7 +91,10 @@ router.get('/:id', async (req, res) => {
 // Update GitHub/Hosted URLs
 router.patch('/:id/urls', async (req, res) => {
   try {
-    const team = await Team.findById(req.params.id);
+    const team = await Team.findOne({ 
+      _id: req.params.id, 
+      organization: req.user.organization 
+    });
     if (!team) return res.status(404).json({ error: 'Team not found' });
     if (req.body.githubUrl !== undefined) team.githubUrl = req.body.githubUrl;
     if (req.body.hostedUrl !== undefined) team.hostedUrl = req.body.hostedUrl;
@@ -101,14 +108,20 @@ router.patch('/:id/urls', async (req, res) => {
 // DELETE /api/teams/:id (delete single team)
 router.delete('/:id', async (req, res) => {
   try {
-    const team = await Team.findById(req.params.id);
+    const team = await Team.findOne({ 
+      _id: req.params.id, 
+      organization: req.user.organization 
+    });
     if (!team) {
       return res.status(404).json({ error: 'Team not found' });
     }
 
     // Delete all students in this team
     if (team.students && team.students.length > 0) {
-      await Student.deleteMany({ _id: { $in: team.students } });
+      await Student.deleteMany({ 
+        _id: { $in: team.students },
+        organization: req.user.organization
+      });
     }
 
     // Delete the team
@@ -129,8 +142,11 @@ router.delete('/', async (req, res) => {
       return res.status(400).json({ error: 'Team IDs array is required' });
     }
 
-    // Get all teams to be deleted
-    const teams = await Team.find({ _id: { $in: teamIds } });
+    // Get all teams to be deleted (only from user's organization)
+    const teams = await Team.find({ 
+      _id: { $in: teamIds },
+      organization: req.user.organization
+    });
     
     // Collect all student IDs to delete
     const studentIdsToDelete = [];
@@ -142,15 +158,21 @@ router.delete('/', async (req, res) => {
 
     // Delete all students from these teams
     if (studentIdsToDelete.length > 0) {
-      await Student.deleteMany({ _id: { $in: studentIdsToDelete } });
+      await Student.deleteMany({ 
+        _id: { $in: studentIdsToDelete },
+        organization: req.user.organization
+      });
     }
 
     // Delete all teams
-    await Team.deleteMany({ _id: { $in: teamIds } });
+    await Team.deleteMany({ 
+      _id: { $in: teamIds },
+      organization: req.user.organization
+    });
     
     res.json({ 
-      message: `${teamIds.length} team(s) deleted successfully`,
-      deletedCount: teamIds.length,
+      message: `${teams.length} team(s) deleted successfully`,
+      deletedCount: teams.length,
       studentsDeleted: studentIdsToDelete.length
     });
   } catch (err) {
@@ -165,7 +187,10 @@ router.patch('/:id/checkpoints/bulk', async (req, res) => {
     const { id } = req.params;
     const { updates } = req.body; // Array of { index, completed }
     
-    const team = await Team.findById(id);
+    const team = await Team.findOne({ 
+      _id: id, 
+      organization: req.user.organization 
+    });
     if (!team) return res.status(404).json({ error: 'Team not found' });
     
     if (!Array.isArray(updates)) {
@@ -193,7 +218,10 @@ router.patch('/:id/checkpoints/:checkpointIndex', async (req, res) => {
   try {
     const { id, checkpointIndex } = req.params;
     const { completed } = req.body;
-    const team = await Team.findById(id);
+    const team = await Team.findOne({ 
+      _id: id, 
+      organization: req.user.organization 
+    });
     if (!team) return res.status(404).json({ error: 'Team not found' });
     if (!team.checkpoints || team.checkpoints.length <= checkpointIndex) {
       return res.status(400).json({ error: 'Invalid checkpoint index' });

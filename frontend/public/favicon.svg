@@ -1,0 +1,17 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="16" cy="16" r="15" fill="#3B82F6" stroke="#1E40AF" stroke-width="2"/>
+  
+  <!-- Checkmark representing completion -->
+  <path d="M8 16L14 22L24 10" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Progress indicator dots -->
+  <circle cx="8" cy="8" r="2" fill="#10B981"/>
+  <circle cx="16" cy="8" r="2" fill="#10B981"/>
+  <circle cx="24" cy="8" r="2" fill="#F59E0B"/>
+  
+  <!-- Project icon -->
+  <rect x="6" y="20" width="20" height="8" rx="2" fill="white" opacity="0.9"/>
+  <rect x="8" y="22" width="16" height="2" rx="1" fill="#3B82F6"/>
+  <rect x="8" y="25" width="12" height="1" rx="0.5" fill="#3B82F6"/>
+</svg> 

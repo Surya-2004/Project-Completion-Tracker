@@ -5,7 +5,8 @@ const StudentSchema = new mongoose.Schema({
   department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
   role: { type: String },
   resumeUrl: { type: String },
-  teamId: { type: mongoose.Schema.Types.ObjectId, ref: 'Team' }
+  teamId: { type: mongoose.Schema.Types.ObjectId, ref: 'Team' },
+  organization: { type: String, required: true }
 });
 
 module.exports = mongoose.model('Student', StudentSchema);

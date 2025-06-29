@@ -9,20 +9,26 @@ router.get('/', async (req, res) => {
   try {
     // Total counts
     const [totalStudents, totalTeams, totalDepartments] = await Promise.all([
-      Student.countDocuments(),
-      Team.countDocuments(),
-      Department.countDocuments()
+      Student.countDocuments({ organization: req.user.organization }),
+      Team.countDocuments({ organization: req.user.organization }),
+      Department.countDocuments({ organization: req.user.organization })
     ]);
 
     // Get all teams with populated data
-    const teams = await Team.find().populate({
+    const teams = await Team.find({ organization: req.user.organization }).populate({
       path: 'students',
       populate: { path: 'department', model: 'Department' }
     });
 
     // Completed vs Incomplete projects
-    const completedProjects = await Team.countDocuments({ completed: true });
-    const incompleteProjects = await Team.countDocuments({ completed: false });
+    const completedProjects = await Team.countDocuments({ 
+      completed: true, 
+      organization: req.user.organization 
+    });
+    const incompleteProjects = await Team.countDocuments({ 
+      completed: false, 
+      organization: req.user.organization 
+    });
 
     // Calculate completion percentage
     const completionPercentage = totalTeams > 0 ? ((completedProjects / totalTeams) * 100).toFixed(1) : 0;
@@ -64,6 +70,7 @@ router.get('/', async (req, res) => {
 
     // Breakdown by domain (number of students per domain)
     const domainAgg = await Team.aggregate([
+      { $match: { organization: req.user.organization } },
       { $unwind: '$students' },
       { $group: { _id: '$domain', studentCount: { $sum: 1 } } }
     ]);
@@ -96,6 +103,7 @@ router.get('/', async (req, res) => {
 
     // Breakdown by department: number of teams, students, and completed projects
     const teamsAgg = await Team.aggregate([
+      { $match: { organization: req.user.organization } },
       { $unwind: '$students' },
       { $lookup: {
           from: 'students',
@@ -114,7 +122,7 @@ router.get('/', async (req, res) => {
     ]);
 
     // Get department names and calculate completion stats
-    const departments = await Department.find();
+    const departments = await Department.find({ organization: req.user.organization });
     const departmentStats = teamsAgg.map(dep => {
       const dept = departments.find(d => d._id.equals(dep._id));
       const deptTeams = teams.filter(team => 
@@ -159,8 +167,8 @@ router.get('/', async (req, res) => {
 // Returns [{ departmentId, departmentName, completed, notCompleted }]
 router.get('/department-completion', async (req, res) => {
   try {
-    const departments = await Department.find();
-    const teams = await Team.find().populate({
+    const departments = await Department.find({ organization: req.user.organization });
+    const teams = await Team.find({ organization: req.user.organization }).populate({
       path: 'students',
       populate: { path: 'department', model: 'Department' }
     });
@@ -194,7 +202,10 @@ router.get('/department-completion', async (req, res) => {
 router.get('/incomplete-teams', async (req, res) => {
   try {
     const { department } = req.query;
-    let teams = await Team.find({ completed: false })
+    let teams = await Team.find({ 
+      completed: false, 
+      organization: req.user.organization 
+    })
       .populate({
         path: 'students',
         populate: { path: 'department', model: 'Department' }
@@ -226,7 +237,10 @@ router.get('/incomplete-teams', async (req, res) => {
 router.get('/completed-teams', async (req, res) => {
   try {
     const { department } = req.query;
-    let teams = await Team.find({ completed: true })
+    let teams = await Team.find({ 
+      completed: true, 
+      organization: req.user.organization 
+    })
       .populate({
         path: 'students',
         populate: { path: 'department', model: 'Department' }

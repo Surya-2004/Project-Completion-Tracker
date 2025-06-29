@@ -11,6 +11,7 @@ import DepartmentStatsChart from '../components/DepartmentStatsChart';
 import DepartmentCompletionChart from '../components/DepartmentCompletionChart';
 import DomainStatsChart from '../components/DomainStatsChart';
 import EnhancedDepartmentStatsTable from '../components/EnhancedDepartmentStatsTable';
+import DownloadPDFButton from '../components/DownloadPDFButton';
 
 export default function Statistics() {
   const [stats, setStats] = useState(null);
@@ -48,10 +49,15 @@ export default function Statistics() {
       {/* Header */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-3xl font-extrabold tracking-tight">📊 Project Statistics Dashboard</CardTitle>
-          <p className="text-muted-foreground">
-            Comprehensive insights into team progress, department performance, and project completion rates
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-3xl font-extrabold tracking-tight">📊 Project Statistics Dashboard</CardTitle>
+              <p className="text-muted-foreground">
+                Comprehensive insights into team progress, department performance, and project completion rates
+              </p>
+            </div>
+            <DownloadPDFButton />
+          </div>
         </CardHeader>
       </Card>
       

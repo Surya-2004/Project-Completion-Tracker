@@ -3,6 +3,7 @@ const router = express.Router();
 const Team = require('../models/Team');
 const Student = require('../models/Student');
 const Department = require('../models/Department');
+const InterviewScore = require('../models/InterviewScore');
 
 // Add Team (with students)
 router.post('/', async (req, res) => {
@@ -116,6 +117,12 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Team not found' });
     }
 
+    // Delete all interview scores for this team
+    await InterviewScore.deleteMany({ 
+      teamId: team._id,
+      organization: req.user.organization
+    });
+
     // Delete all students in this team
     if (team.students && team.students.length > 0) {
       await Student.deleteMany({ 
@@ -154,6 +161,12 @@ router.delete('/', async (req, res) => {
       if (team.students && team.students.length > 0) {
         studentIdsToDelete.push(...team.students);
       }
+    });
+
+    // Delete all interview scores for these teams
+    await InterviewScore.deleteMany({ 
+      teamId: { $in: teamIds },
+      organization: req.user.organization
     });
 
     // Delete all students from these teams

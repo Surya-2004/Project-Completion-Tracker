@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Student = require('../models/Student');
 const Team = require('../models/Team');
+const InterviewScore = require('../models/InterviewScore');
 
 // GET /api/students?department=...  (list students by department)
 router.get('/', async (req, res) => {
@@ -83,6 +84,12 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Student not found' });
     }
 
+    // Delete interview scores for this student
+    await InterviewScore.deleteMany({ 
+      studentId: student._id,
+      organization: req.user.organization
+    });
+
     // Remove student from team
     if (student.teamId) {
       const team = await Team.findOne({ 
@@ -92,8 +99,13 @@ router.delete('/:id', async (req, res) => {
       if (team) {
         team.students = team.students.filter(s => s.toString() !== student._id.toString());
         
-        // If team has no students left, delete the team
+        // If team has no students left, delete the team and its interview scores
         if (team.students.length === 0) {
+          // Delete all interview scores for this team
+          await InterviewScore.deleteMany({ 
+            teamId: team._id,
+            organization: req.user.organization
+          });
           await Team.findByIdAndDelete(team._id);
         } else {
           await team.save();
@@ -125,6 +137,12 @@ router.delete('/', async (req, res) => {
       organization: req.user.organization
     });
     
+    // Delete interview scores for all these students
+    await InterviewScore.deleteMany({ 
+      studentId: { $in: studentIds },
+      organization: req.user.organization
+    });
+    
     // Group students by team for efficient processing
     const teamStudents = {};
     students.forEach(student => {
@@ -147,8 +165,13 @@ router.delete('/', async (req, res) => {
           !studentIdsToRemove.some(id => id.toString() === s.toString())
         );
         
-        // If team has no students left, delete it
+        // If team has no students left, delete it and its interview scores
         if (team.students.length === 0) {
+          // Delete all interview scores for this team
+          await InterviewScore.deleteMany({ 
+            teamId: teamId,
+            organization: req.user.organization
+          });
           await Team.findByIdAndDelete(teamId);
         } else {
           await team.save();

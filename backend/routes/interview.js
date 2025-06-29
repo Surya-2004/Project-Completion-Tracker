@@ -43,7 +43,14 @@ router.post('/student/:studentId', async (req, res) => {
     }
 
     // Populate student details
-    await interviewScore.populate('studentId', 'name department role');
+    await interviewScore.populate({
+      path: 'studentId',
+      select: 'name department role',
+      populate: {
+        path: 'department',
+        select: 'name'
+      }
+    });
     await interviewScore.populate('teamId', 'teamNumber projectTitle');
 
     res.json(interviewScore);
@@ -106,7 +113,14 @@ router.post('/team/:teamId', async (req, res) => {
       }
 
       // Populate student details
-      await interviewScore.populate('studentId', 'name department role');
+      await interviewScore.populate({
+        path: 'studentId',
+        select: 'name department role',
+        populate: {
+          path: 'department',
+          select: 'name'
+        }
+      });
       await interviewScore.populate('teamId', 'teamNumber projectTitle');
 
       results.push(interviewScore);
@@ -137,8 +151,15 @@ router.get('/student/:studentId', async (req, res) => {
       studentId,
       organization: req.user.organization
     })
-      .populate('studentId', 'name department role')
-      .populate('teamId', 'teamNumber projectTitle');
+      .populate('teamId', 'teamNumber projectTitle')
+      .populate({
+        path: 'studentId',
+        select: 'name department role',
+        populate: {
+          path: 'department',
+          select: 'name'
+        }
+      });
 
     if (!interviewScore) {
       return res.status(404).json({ error: 'No interview score found for this student' });
@@ -169,8 +190,15 @@ router.get('/team/:teamId', async (req, res) => {
       teamId,
       organization: req.user.organization
     })
-      .populate('studentId', 'name department role')
-      .populate('teamId', 'teamNumber projectTitle');
+      .populate('teamId', 'teamNumber projectTitle')
+      .populate({
+        path: 'studentId',
+        select: 'name department role',
+        populate: {
+          path: 'department',
+          select: 'name'
+        }
+      });
 
     // Calculate team statistics
     const teamStats = {
@@ -225,8 +253,15 @@ router.get('/department/:departmentId', async (req, res) => {
       studentId: { $in: studentIds },
       organization: req.user.organization
     })
-      .populate('studentId', 'name department role')
-      .populate('teamId', 'teamNumber projectTitle');
+      .populate('teamId', 'teamNumber projectTitle')
+      .populate({
+        path: 'studentId',
+        select: 'name department role',
+        populate: {
+          path: 'department',
+          select: 'name'
+        }
+      });
 
     // Calculate department statistics
     const departmentStats = {
@@ -276,8 +311,15 @@ router.get('/department/:departmentId', async (req, res) => {
 router.get('/stats/overview', async (req, res) => {
   try {
     const allScores = await InterviewScore.find({ organization: req.user.organization })
-      .populate('studentId', 'name department role')
-      .populate('teamId', 'teamNumber projectTitle');
+      .populate('teamId', 'teamNumber projectTitle')
+      .populate({
+        path: 'studentId',
+        select: 'name department role',
+        populate: {
+          path: 'department',
+          select: 'name'
+        }
+      });
 
     const overview = {
       totalInterviews: allScores.length,

@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import api from '../services/api';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -12,36 +11,37 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { useDataManager } from '../hooks/useDataManager';
 
 export default function CompletedTeams() {
-  const [teams, setTeams] = useState([]);
-  const [departments, setDepartments] = useState([]);
   const [selectedDept, setSelectedDept] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
-  useEffect(() => {
-    api.get('/departments').then(res => setDepartments(res.data));
-  }, []);
+  // Use data manager for departments
+  const { 
+    data: departments = [] 
+  } = useDataManager('/departments', {
+    cacheKey: 'departments'
+  });
 
-  const fetchTeams = (deptId) => {
-    setLoading(true);
-    api.get('/statistics/completed-teams' + (deptId ? `?department=${deptId}` : ''))
-      .then(res => setTeams(res.data))
-      .catch(() => setError('Failed to fetch teams'))
-      .finally(() => setLoading(false));
-  };
+  // Use data manager for completed teams with force refresh on navigation
+  const { 
+    data: teams = [], 
+    loading, 
+    error 
+  } = useDataManager('/statistics/completed-teams' + (selectedDept ? `?department=${selectedDept}` : ''), {
+    forceRefresh: true,
+    cacheKey: `completed-teams-${selectedDept}`
+  });
 
-  useEffect(() => {
-    fetchTeams(selectedDept);
-    // eslint-disable-next-line
-  }, [selectedDept]);
+  // Ensure arrays are safe
+  const teamsArray = Array.isArray(teams) ? teams : [];
+  const departmentsArray = Array.isArray(departments) ? departments : [];
 
   return (
-    <div className="max-w-5xl mx-auto p-10 mt-8">
+    <div className="max-w-5xl mx-auto p-4 sm:p-6 lg:p-10 mt-8">
       <Card>
         <CardHeader>
-          <CardTitle className="text-3xl font-extrabold text-center">Completed Teams</CardTitle>
+          <CardTitle className="text-2xl sm:text-3xl font-extrabold text-center">Completed Teams</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex flex-col md:flex-row md:items-center gap-4">
@@ -53,7 +53,7 @@ export default function CompletedTeams() {
               onChange={e => setSelectedDept(e.target.value)}
             >
               <option value="">All Departments</option>
-              {departments.map(dep => (
+              {departmentsArray.map(dep => (
                 <option key={dep._id} value={dep._id}>{dep.name}</option>
               ))}
             </select>
@@ -63,7 +63,7 @@ export default function CompletedTeams() {
             <div className="text-muted-foreground text-center py-8">Loading teams...</div>
           ) : error ? (
             <div className="text-destructive font-medium text-center py-8">{error}</div>
-          ) : teams.length === 0 ? (
+          ) : teamsArray.length === 0 ? (
             <div className="text-muted-foreground text-center py-8">No completed teams found.</div>
           ) : (
             <div className="overflow-x-auto">
@@ -79,7 +79,7 @@ export default function CompletedTeams() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {teams.map((team) => (
+                  {teamsArray.map((team) => (
                     <TableRow key={team._id}>
                       <TableCell className="text-center font-medium">{team.teamNumber}</TableCell>
                       <TableCell className="text-center">{team.projectTitle || <span className="text-muted-foreground">—</span>}</TableCell>
@@ -87,7 +87,7 @@ export default function CompletedTeams() {
                       <TableCell className="text-center">
                         <div className="flex justify-center">
                           <Badge variant="default" className="bg-green-600 hover:bg-green-700 w-full">
-                            {team.ticked}
+                            {team.ticked || 0}
                           </Badge>
                         </div>
                       </TableCell>

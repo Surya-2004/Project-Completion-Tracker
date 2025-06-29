@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
-import api from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useDataManager } from '../hooks/useDataManager';
 
 // Import new statistical components
 import GeneralStatsCards from '../components/GeneralStatsCards';
@@ -14,17 +13,17 @@ import EnhancedDepartmentStatsTable from '../components/EnhancedDepartmentStatsT
 import DownloadPDFButton from '../components/DownloadPDFButton';
 
 export default function Statistics() {
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  useEffect(() => {
-    api.get('/statistics')
-      .then(res => setStats(res.data))
-      .catch(() => setError('Failed to fetch statistics'))
-      .finally(() => setLoading(false));
-  }, []);
+  // Use data manager for statistics with force refresh on navigation
+  const { 
+    data: stats, 
+    loading, 
+    error 
+  } = useDataManager('/statistics', {
+    forceRefresh: true, // Force refresh when navigating to this page
+    cacheKey: 'statistics'
+  });
 
   if (loading) return (
     <Card className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">

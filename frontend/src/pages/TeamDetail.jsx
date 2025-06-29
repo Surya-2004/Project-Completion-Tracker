@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
 import CheckpointProgressBar from '../components/CheckpointProgressBar';
@@ -9,12 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import toast from 'react-hot-toast';
+import { useDataManager } from '../hooks/useDataManager';
+import { useDataContext } from '../hooks/useDataContext';
 
 export default function TeamDetail() {
   const { id } = useParams();
-  const [team, setTeam] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [githubUrl, setGithubUrl] = useState('');
   const [hostedUrl, setHostedUrl] = useState('');
   const [saving, setSaving] = useState(false);
@@ -29,31 +28,38 @@ export default function TeamDetail() {
   const [savingDetails, setSavingDetails] = useState(false);
   const [errors, setErrors] = useState({});
 
+  const { invalidateTeamCache } = useDataContext();
+
+  // Use data manager for team data with force refresh on navigation
+  const { 
+    data: team, 
+    loading, 
+    error, 
+    updateData: updateTeam 
+  } = useDataManager(`/teams/${id}`, {
+    forceRefresh: true, // Force refresh when navigating to this page
+    cacheKey: `/teams/${id}`
+  });
+
+  // Initialize form data when team data is loaded
   useEffect(() => {
-    api.get(`/teams/${id}`)
-      .then(res => {
-        setTeam(res.data);
-        setGithubUrl(res.data.githubUrl || '');
-        setHostedUrl(res.data.hostedUrl || '');
-        setProjectTitle(res.data.projectTitle || '');
-        setDomain(res.data.domain || '');
-        setProjectDescription(res.data.projectDescription || '');
-        
-        // Initialize student roles
-        const roles = {};
-        if (res.data.students) {
-          res.data.students.forEach(student => {
-            roles[student._id] = student.role || '';
-          });
-        }
-        setStudentRoles(roles);
-      })
-      .catch((err) => {
-        console.error('Error fetching team:', err);
-        setError('Failed to fetch team');
-      })
-      .finally(() => setLoading(false))
-  }, [id])
+    if (team) {
+      setGithubUrl(team.githubUrl || '');
+      setHostedUrl(team.hostedUrl || '');
+      setProjectTitle(team.projectTitle || '');
+      setDomain(team.domain || '');
+      setProjectDescription(team.projectDescription || '');
+      
+      // Initialize student roles
+      const roles = {};
+      if (Array.isArray(team.students)) {
+        team.students.forEach(student => {
+          roles[student._id] = student.role || '';
+        });
+      }
+      setStudentRoles(roles);
+    }
+  }, [team]);
 
   const handleSaveUrls = async (e) => {
     e.preventDefault();
@@ -61,8 +67,13 @@ export default function TeamDetail() {
     setSaveMsg('');
     try {
       const res = await api.patch(`/teams/${id}/urls`, { githubUrl, hostedUrl });
-      setTeam(res.data);
+      
+      // Update local state immediately
+      updateTeam(res.data);
       setSaveMsg('Links updated!');
+      
+      // Invalidate related caches
+      invalidateTeamCache();
     } catch {
       setSaveMsg('Failed to update links');
     } finally {
@@ -116,9 +127,13 @@ export default function TeamDetail() {
         students
       });
       
-      setTeam(res.data);
+      // Update local state immediately
+      updateTeam(res.data);
       setIsEditing(false);
       toast.success('Team details updated successfully!');
+      
+      // Invalidate related caches
+      invalidateTeamCache();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to update team details');
     } finally {
@@ -133,7 +148,7 @@ export default function TeamDetail() {
     setProjectDescription(team?.projectDescription || '');
     
     const roles = {};
-    if (team?.students) {
+    if (Array.isArray(team?.students)) {
       team.students.forEach(student => {
         roles[student._id] = student.role || '';
       });
@@ -145,7 +160,7 @@ export default function TeamDetail() {
   const refreshTeam = async () => {
     try {
       const res = await api.get(`/teams/${id}`);
-      setTeam(res.data);
+      updateTeam(res.data);
     } catch (err) {
       console.error('Error refreshing team:', err);
     }
@@ -297,8 +312,8 @@ export default function TeamDetail() {
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-lg font-bold">Team Members ({team.students?.length || 0})</h3>
-            {team.students && team.students.length > 0 ? (
+            <h3 className="text-lg font-bold">Team Members ({(team.students || []).length})</h3>
+            {Array.isArray(team.students) && team.students.length > 0 ? (
               <div className="grid gap-4">
                 {team.students.map(student => (
                   <Card key={student._id}>
@@ -366,7 +381,7 @@ export default function TeamDetail() {
           <div className="space-y-4">
             <h3 className="text-lg font-bold">Checkpoints</h3>
             <CheckpointProgressBar
-              checkpoints={team.checkpoints}
+              checkpoints={team.checkpoints || []}
               teamId={team._id}
               onRefresh={refreshTeam}
             />

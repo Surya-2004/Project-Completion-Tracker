@@ -71,7 +71,7 @@ export default function StudentInterviewForm() {
   };
 
   const calculateScores = () => {
-    const scores = Object.values(metrics).filter(score => score !== null && score !== undefined && score > 0);
+    const scores = Object.values(metrics || {}).filter(score => score !== null && score !== undefined && score > 0);
     const total = scores.reduce((sum, score) => sum + score, 0);
     const average = scores.length > 0 ? total / scores.length : 0;
     

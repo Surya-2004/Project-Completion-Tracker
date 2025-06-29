@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 import toast from 'react-hot-toast'
@@ -19,6 +19,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useDataManager } from '../hooks/useDataManager';
+import { useDataContext } from '../hooks/useDataContext';
 
 // Lucide React Icons as components
 const PlusIcon = ({ className = "w-5 h-5" }) => <Plus className={className} />
@@ -32,9 +34,6 @@ const TrashIcon = ({ className = "w-5 h-5" }) => <Trash2 className={className} /
 export default function AddDepartment() {
   const [name, setName] = useState("")
   const [loading, setLoading] = useState(false)
-  const [departments, setDepartments] = useState([])
-  const [studentCounts, setStudentCounts] = useState({})
-  const [teamCounts, setTeamCounts] = useState({})
   const [deleting, setDeleting] = useState(false)
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
@@ -44,49 +43,48 @@ export default function AddDepartment() {
   })
   const navigate = useNavigate()
 
-  const fetchDepartments = async () => {
-    try {
-      const res = await api.get("/departments")
-      setDepartments(res.data)
-    } catch (error) {
-      setDepartments([])
-      toast.error("Failed to fetch departments")
-      console.error("Error fetching departments:", error)
-    }
-  }
+  const { invalidateDepartmentCache } = useDataContext();
 
-  const fetchStudentCounts = async () => {
-    try {
-      const res = await api.get("/students")
-      const counts = {}
-      res.data.forEach((stu) => {
-        if (stu.department) {
-          const deptId = typeof stu.department === 'object' ? stu.department._id : stu.department
-          counts[deptId] = (counts[deptId] || 0) + 1
-        }
-      })
-      setStudentCounts(counts)
-    } catch (error) {
-      setStudentCounts({})
-      console.error("Error fetching student counts:", error)
-    }
-  }
+  // Use data manager for departments
+  const { 
+    data: departmentsData = [], 
+    updateData: updateDepartments 
+  } = useDataManager('/departments', {
+    cacheKey: 'departments'
+  });
 
-  const fetchTeamCounts = async () => {
-    try {
-      const res = await api.get("/departments/team-counts")
-      setTeamCounts(res.data)
-    } catch (error) {
-      setTeamCounts({})
-      console.error("Error fetching team counts:", error)
-    }
-  }
+  // Ensure departments is always an array
+  const departments = Array.isArray(departmentsData) ? departmentsData : [];
 
-  useEffect(() => {
-    fetchDepartments()
-    fetchStudentCounts()
-    fetchTeamCounts()
-  }, [])
+  // Use data manager for student counts
+  const { 
+    data: studentsData = []
+  } = useDataManager('/students', {
+    cacheKey: 'students'
+  });
+
+  // Ensure students is always an array
+  const students = Array.isArray(studentsData) ? studentsData : [];
+
+  // Use data manager for team counts
+  const { 
+    data: teamCounts = {}
+  } = useDataManager('/departments/team-counts', {
+    cacheKey: 'team-counts'
+  });
+
+  // Calculate student counts from students data
+  const studentCounts = Array.isArray(students) ? students.reduce((counts, stu) => {
+    if (stu.department) {
+      const deptId = typeof stu.department === 'object' ? stu.department._id : stu.department
+      counts[deptId] = (counts[deptId] || 0) + 1
+    }
+    return counts
+  }, {}) : {};
+
+  // Ensure studentCounts and teamCounts are always objects
+  const safeStudentCounts = studentCounts || {};
+  const safeTeamCounts = teamCounts || {};
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -97,10 +95,16 @@ export default function AddDepartment() {
 
     setLoading(true)
     try {
-      await api.post("/departments", { name: name.trim() })
+      const response = await api.post("/departments", { name: name.trim() })
+      
+      // Update local state immediately
+      updateDepartments(prevDepartments => [...prevDepartments, response.data]);
+      
       toast.success("Department added successfully!")
       setName("")
-      await Promise.all([fetchDepartments(), fetchStudentCounts(), fetchTeamCounts()])
+      
+      // Invalidate related caches
+      invalidateDepartmentCache();
     } catch (err) {
       toast.error(err.response?.data?.error || "Failed to add department")
     } finally {
@@ -126,27 +130,23 @@ export default function AddDepartment() {
     setDeleting(true)
     try {
       await api.delete(`/departments/${departmentId}`)
-      setDepartments((prev) => prev.filter((d) => d._id !== departmentId))
-      toast.success("Department deleted successfully")
-      await Promise.all([fetchStudentCounts(), fetchTeamCounts()])
-      setConfirmDialog({ isOpen: false, departmentId: null, departmentName: "", errorMessage: null })
-    } catch (err) {
-      const message = err.response?.data?.message || err.response?.data?.error || "Failed to delete department"
       
-      if (err.response?.data?.message) {
-        // Show error dialog for department with students
-        setConfirmDialog(prev => ({
-          ...prev,
-          isOpen: false,
-          errorMessage: message
-        }))
-      } else {
-        // Show toast for other errors
-        toast.error(message)
-        setConfirmDialog({ isOpen: false, departmentId: null, departmentName: "", errorMessage: null })
-      }
+      // Update local state immediately
+      updateDepartments(prevDepartments => 
+        prevDepartments.filter(dep => dep._id !== departmentId)
+      );
+      
+      toast.success("Department deleted successfully!")
+      
+      // Invalidate related caches
+      invalidateDepartmentCache();
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || "Failed to delete department"
+      setConfirmDialog(prev => ({ ...prev, errorMessage }))
+      toast.error(errorMessage)
     } finally {
       setDeleting(false)
+      setConfirmDialog({ isOpen: false, departmentId: null, departmentName: "", errorMessage: null })
     }
   }
 
@@ -154,157 +154,139 @@ export default function AddDepartment() {
     setConfirmDialog({ isOpen: false, departmentId: null, departmentName: "", errorMessage: null })
   }
 
-  const handleCardClick = (departmentId) => {
-    navigate(`/departments/${departmentId}/students`)
-  }
-
   return (
-    <div className="min-h-screen p-6">
-      <div className="max-w-6xl mx-auto space-y-8">
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-extrabold tracking-tight">Departments</h1>
-          <p className="text-muted-foreground">Manage your organization's departments</p>
-        </div>
-
-        {/* Add Department Form */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <PlusIcon className="w-5 h-5" />
-              <CardTitle>Add New Department</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="flex gap-4">
-              <div className="flex-1 space-y-2">
-                <Label htmlFor="departmentName">Department Name</Label>
-                <Input
-                  id="departmentName"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter department name"
-                />
-              </div>
-              <div className="flex items-end">
-                <Button
-                  type="submit"
-                  disabled={loading || !name.trim()}
-                >
-                  {loading ? "Adding..." : "Add Department"}
-                </Button>
+    <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 mt-8">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl sm:text-3xl font-extrabold text-center">Department Management</CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-6">
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-4">Add New Department</h3>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="departmentName" className="text-sm font-medium">Department Name *</Label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    id="departmentName"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter department name"
+                    className="flex-1"
+                    required
+                    disabled={loading}
+                  />
+                  <Button 
+                    type="submit" 
+                    disabled={loading || !name.trim()} 
+                    className="px-6 min-w-[100px] bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? (
+                      <>
+                        <PlusIcon className="mr-2 h-4 w-4 animate-spin" />
+                        Adding...
+                      </>
+                    ) : (
+                      <>
+                        <PlusIcon className="mr-2 h-4 w-4" />
+                        Add Department
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </form>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Departments Grid */}
-        <div className="space-y-6">
-          <h2 className="text-xl font-bold">All Departments</h2>
-
-          {departments.length === 0 ? (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <UsersIcon className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <p className="text-lg font-medium mb-2">No departments found</p>
-                <p className="text-sm text-muted-foreground">Add your first department to get started</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="border-t pt-8">
+            <h3 className="text-lg font-semibold mb-6">Existing Departments</h3>
+            <div className="grid gap-4">
               {departments.map((department) => (
-                <Card
-                  key={department._id}
-                  className="relative group cursor-pointer hover:shadow-lg transition-all duration-200"
-                  onClick={() => handleCardClick(department._id)}
-                >
-                  <CardContent className="p-6">
-                    {/* Delete Button */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => handleDeleteClick(e, department._id, department.name)}
-                      disabled={deleting}
-                      className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Delete Department"
-                    >
-                      <TrashIcon className="w-4 h-4" />
-                    </Button>
-
-                    {/* Department Content */}
-                    <div className="space-y-4 pr-8">
-                      <h3 className="font-semibold text-lg leading-tight">
-                        {department.name || <span className="text-muted-foreground italic">Unnamed Department</span>}
-                      </h3>
-
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-2">
-                          <UsersIcon className="w-4 h-4 text-muted-foreground" />
-                          <Badge variant="secondary">
-                            {studentCounts[department._id] || 0} student{studentCounts[department._id] === 1 ? "" : "s"}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <UserCheckIcon className="w-4 h-4 text-muted-foreground" />
+                <Card key={department._id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                          <h4 className="font-semibold text-lg">{department.name}</h4>
                           <Badge variant="outline">
-                            {teamCounts[department._id] || 0} team{teamCounts[department._id] === 1 ? "" : "s"}
+                            <UsersIcon className="w-3 h-3 mr-1" />
+                            {safeStudentCounts[department._id] || 0} Students
+                          </Badge>
+                          <Badge variant="secondary">
+                            <UserCheckIcon className="w-3 h-3 mr-1" />
+                            {safeTeamCounts[department._id] || 0} Teams
                           </Badge>
                         </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/departments/${department._id}/students`)}
+                          className="flex items-center gap-1"
+                        >
+                          <UsersIcon className="w-3 h-3" />
+                          View Students
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={(e) => handleDeleteClick(e, department._id, department.name)}
+                          disabled={deleting}
+                          className="flex items-center gap-1"
+                        >
+                          <TrashIcon className="w-3 h-3" />
+                          Delete
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
-          )}
-        </div>
 
-        {/* Delete Confirmation Dialog */}
-        <Dialog open={confirmDialog.isOpen} onOpenChange={handleDeleteCancel}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete Department</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete "{confirmDialog.departmentName}"? This action cannot be undone.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={handleDeleteCancel}>
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDeleteConfirm}
-                disabled={deleting}
-              >
-                {deleting ? "Deleting..." : "Delete"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Error Dialog for Department with Students */}
-        <Dialog open={!!confirmDialog.errorMessage} onOpenChange={handleDeleteCancel}>
-          <DialogContent>
-            <DialogHeader>
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="w-5 h-5 text-destructive" />
-                <DialogTitle>Cannot Delete Department</DialogTitle>
+            {departments.length === 0 && (
+              <div className="text-center py-12">
+                <AlertTriangle className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <h4 className="text-lg font-medium text-muted-foreground mb-2">No departments found</h4>
+                <p className="text-sm text-muted-foreground">Add your first department using the form above.</p>
               </div>
-            </DialogHeader>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={confirmDialog.isOpen} onOpenChange={handleDeleteCancel}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Department</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{confirmDialog.departmentName}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {confirmDialog.errorMessage && (
             <Alert variant="destructive">
-              <AlertDescription>
-                {confirmDialog.errorMessage}
-              </AlertDescription>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{confirmDialog.errorMessage}</AlertDescription>
             </Alert>
-            <DialogFooter>
-              <Button onClick={handleDeleteCancel}>
-                OK
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={handleDeleteCancel}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+            >
+              {deleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

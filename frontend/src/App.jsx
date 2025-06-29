@@ -21,49 +21,52 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
+import { DataProvider } from './contexts/DataContext';
 
 function App() {
   return (
     <div className="dark min-h-screen bg-background text-foreground">
       <Router>
         <AuthProvider>
-          <Routes>
-            {/* Auth routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password/:token" element={<ResetPassword />} />
+          <DataProvider>
+            <Routes>
+              {/* Auth routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password/:token" element={<ResetPassword />} />
 
-            {/* Protected routes */}
-            <Route
-              path="/*"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Routes>
-                      <Route path="/" element={<Navigate to="/teams" />} />
-                      <Route path="/departments" element={<AddDepartment />} />
-                      <Route path="/departments/add" element={<AddDepartment />} />
-                      <Route path="/departments/:id/students" element={<StudentList />} />
-                      <Route path="/teams/add" element={<AddTeam />} />
-                      <Route path="/teams" element={<TeamList />} />
-                      <Route path="/teams/:id" element={<TeamDetail />} />
-                      <Route path="/teams/incomplete" element={<NotCompletedTeams />} />
-                      <Route path="/teams/completed" element={<CompletedTeams />} />
-                      <Route path="/statistics" element={<Statistics />} />
-                      {/* Interview Routes with Error Boundaries */}
-                      <Route path="/interviews" element={<ErrorBoundary><InterviewDashboard /></ErrorBoundary>} />
-                      <Route path="/interviews/student/:studentId" element={<ErrorBoundary><StudentInterviewForm /></ErrorBoundary>} />
-                      <Route path="/interviews/student/:studentId/view" element={<ErrorBoundary><StudentInterviewView /></ErrorBoundary>} />
-                      <Route path="/interviews/team/:teamId" element={<ErrorBoundary><TeamInterviewForm /></ErrorBoundary>} />
-                      <Route path="/interviews/team/:teamId/view" element={<ErrorBoundary><TeamInterviewView /></ErrorBoundary>} />
-                      <Route path="/interviews/statistics" element={<ErrorBoundary><InterviewStatistics /></ErrorBoundary>} />
-                    </Routes>
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
+              {/* Protected routes */}
+              <Route
+                path="/*"
+                element={
+                  <ProtectedRoute>
+                    <MainLayout>
+                      <Routes>
+                        <Route path="/" element={<Navigate to="/teams" />} />
+                        <Route path="/departments" element={<ErrorBoundary><AddDepartment /></ErrorBoundary>} />
+                        <Route path="/departments/add" element={<ErrorBoundary><AddDepartment /></ErrorBoundary>} />
+                        <Route path="/departments/:id/students" element={<ErrorBoundary><StudentList /></ErrorBoundary>} />
+                        <Route path="/teams/add" element={<ErrorBoundary><AddTeam /></ErrorBoundary>} />
+                        <Route path="/teams" element={<ErrorBoundary><TeamList /></ErrorBoundary>} />
+                        <Route path="/teams/:id" element={<ErrorBoundary><TeamDetail /></ErrorBoundary>} />
+                        <Route path="/teams/incomplete" element={<ErrorBoundary><NotCompletedTeams /></ErrorBoundary>} />
+                        <Route path="/teams/completed" element={<ErrorBoundary><CompletedTeams /></ErrorBoundary>} />
+                        <Route path="/statistics" element={<ErrorBoundary><Statistics /></ErrorBoundary>} />
+                        {/* Interview Routes with Error Boundaries */}
+                        <Route path="/interviews" element={<ErrorBoundary><InterviewDashboard /></ErrorBoundary>} />
+                        <Route path="/interviews/student/:studentId" element={<ErrorBoundary><StudentInterviewForm /></ErrorBoundary>} />
+                        <Route path="/interviews/student/:studentId/view" element={<ErrorBoundary><StudentInterviewView /></ErrorBoundary>} />
+                        <Route path="/interviews/team/:teamId" element={<ErrorBoundary><TeamInterviewForm /></ErrorBoundary>} />
+                        <Route path="/interviews/team/:teamId/view" element={<ErrorBoundary><TeamInterviewView /></ErrorBoundary>} />
+                        <Route path="/interviews/statistics" element={<ErrorBoundary><InterviewStatistics /></ErrorBoundary>} />
+                      </Routes>
+                    </MainLayout>
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </DataProvider>
         </AuthProvider>
       </Router>
     </div>

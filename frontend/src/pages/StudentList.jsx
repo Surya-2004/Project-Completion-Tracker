@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -17,13 +17,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { useDataManager } from '../hooks/useDataManager';
+import { useDataContext } from '../hooks/useDataContext';
 
 export default function StudentList() {
   const { id } = useParams(); // department id
-  const [students, setStudents] = useState([]);
-  const [department, setDepartment] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [resumeInput, setResumeInput] = useState('');
   const [saving, setSaving] = useState(false);
@@ -36,19 +34,33 @@ export default function StudentList() {
     studentCount: 0
   });
 
-  useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      api.get(`/departments`),
-      api.get(`/students?department=${id}`)
-    ])
-      .then(([depRes, stuRes]) => {
-        setDepartment(depRes.data.find(d => d._id === id));
-        setStudents(stuRes.data);
-      })
-      .catch(() => setError('Failed to fetch students or department'))
-      .finally(() => setLoading(false));
-  }, [id]);
+  const { invalidateStudentCache } = useDataContext();
+
+  // Use data manager for departments
+  const { 
+    data: departments = [] 
+  } = useDataManager('/departments', {
+    cacheKey: 'departments'
+  });
+
+  // Use data manager for students with force refresh on navigation
+  const { 
+    data: students = [], 
+    loading, 
+    error, 
+    updateData: updateStudents 
+  } = useDataManager(`/students?department=${id}`, {
+    forceRefresh: true,
+    cacheKey: `students-${id}`
+  });
+
+  // Ensure arrays are safe
+  const studentsArray = Array.isArray(students) ? students : [];
+  const departmentsArray = Array.isArray(departments) ? departments : [];
+  const selectedStudentsArray = Array.isArray(selectedStudents) ? selectedStudents : [];
+
+  // Find department name
+  const department = departmentsArray.find(d => d._id === id);
 
   const startEdit = (stu) => {
     setEditingId(stu._id);
@@ -60,16 +72,30 @@ export default function StudentList() {
     setResumeInput('');
   };
 
-  const saveResume = async (stu) => {
+  const saveResume = async () => {
+    if (!editingId) return;
+    
     setSaving(true);
     try {
-      const res = await api.patch(`/students/${stu._id}`, { resumeUrl: resumeInput });
-      setStudents(students => students.map(s => s._id === stu._id ? res.data : s));
-      toast.success('Resume updated!');
+      await api.patch(`/students/${editingId}`, { resumeUrl: resumeInput });
+      
+      // Update local state immediately
+      updateStudents(prevStudents => 
+        prevStudents.map(s => 
+          s._id === editingId 
+            ? { ...s, resumeUrl: resumeInput }
+            : s
+        )
+      );
+      
       setEditingId(null);
       setResumeInput('');
+      toast.success('Resume URL updated successfully!');
+      
+      // Invalidate related caches
+      invalidateStudentCache();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to update resume');
+      toast.error(err.response?.data?.error || 'Failed to update resume URL');
     } finally {
       setSaving(false);
     }
@@ -84,15 +110,15 @@ export default function StudentList() {
   };
 
   const handleSelectAll = () => {
-    if (selectedStudents.length === students.length) {
+    if (selectedStudentsArray.length === studentsArray.length) {
       setSelectedStudents([]);
     } else {
-      setSelectedStudents(students.map(s => s._id));
+      setSelectedStudents(studentsArray.map(s => s._id));
     }
   };
 
   const handleDeleteSelected = () => {
-    if (selectedStudents.length === 0) {
+    if (selectedStudentsArray.length === 0) {
       toast.error('Please select students to delete');
       return;
     }
@@ -100,7 +126,7 @@ export default function StudentList() {
     setConfirmDialog({
       isOpen: true,
       type: 'bulk',
-      studentCount: selectedStudents.length
+      studentCount: selectedStudentsArray.length
     });
   };
 
@@ -113,21 +139,26 @@ export default function StudentList() {
   };
 
   const handleDeleteConfirm = async () => {
-    const { type, studentId, studentCount } = confirmDialog;
+    const { type, studentId } = confirmDialog;
     
     setDeleting(true);
     try {
       if (type === 'single') {
         await api.delete(`/students/${studentId}`);
-        setStudents(students => students.filter(s => s._id !== studentId));
+        // Update local state immediately
+        updateStudents(prevStudents => prevStudents.filter(s => s._id !== studentId));
         setSelectedStudents(prev => prev.filter(id => id !== studentId));
         toast.success('Student deleted successfully');
       } else if (type === 'bulk') {
-        await api.delete('/students', { data: { studentIds: selectedStudents } });
-        setStudents(students => students.filter(s => !selectedStudents.includes(s._id)));
+        const response = await api.delete('/students', { data: { studentIds: selectedStudentsArray } });
+        // Update local state immediately
+        updateStudents(prevStudents => prevStudents.filter(s => !selectedStudentsArray.includes(s._id)));
         setSelectedStudents([]);
-        toast.success(`${studentCount} student(s) deleted successfully`);
+        toast.success(response.data.message);
       }
+      
+      // Invalidate related caches
+      invalidateStudentCache();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to delete students');
     } finally {
@@ -143,54 +174,67 @@ export default function StudentList() {
   const getConfirmMessage = () => {
     const { type, studentCount } = confirmDialog;
     if (type === 'single') {
-      return 'Are you sure you want to delete this student? This will also remove them from their team and delete the team if it becomes empty.';
+      return 'Are you sure you want to delete this student?';
     } else if (type === 'bulk') {
-      return `Are you sure you want to delete ${studentCount} student(s)? This will also remove them from their teams and delete any empty teams.`;
+      return `Are you sure you want to delete ${studentCount} student(s)?`;
     }
     return '';
   };
 
+  if (loading) return (
+    <Card className="max-w-4xl mx-auto p-8 mt-8">
+      <CardContent>
+        <p className="text-muted-foreground">Loading students...</p>
+      </CardContent>
+    </Card>
+  );
+  
+  if (error) return (
+    <Card className="max-w-4xl mx-auto p-8 mt-8">
+      <CardContent>
+        <p className="text-destructive font-medium">{error}</p>
+      </CardContent>
+    </Card>
+  );
+
   return (
-    <div className="max-w-4xl mx-auto p-10 mt-8">
+    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-10 mt-8">
       <Card>
         <CardHeader>
-          <CardTitle className="text-3xl font-extrabold text-center">
-            {department ? `${department.name} Department` : 'Department'} - Students
+          <CardTitle className="text-2xl sm:text-3xl font-extrabold text-center">
+            Students - {department?.name || 'Department'}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 p-4 sm:p-6">
           {/* Selection Controls */}
-          {students.length > 0 && (
+          {studentsArray.length > 0 && (
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-muted p-4 rounded-lg">
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                 <div className="flex items-center space-x-2">
                   <Checkbox
-                    checked={selectedStudents.length === students.length && students.length > 0}
+                    checked={selectedStudentsArray.length === studentsArray.length && studentsArray.length > 0}
                     onCheckedChange={handleSelectAll}
                   />
                   <Label>Select All</Label>
                 </div>
                 <span className="text-muted-foreground">
-                  {selectedStudents.length} of {students.length} selected
+                  {selectedStudentsArray.length} of {studentsArray.length} selected
                 </span>
               </div>
-              {selectedStudents.length > 0 && (
+              {selectedStudentsArray.length > 0 && (
                 <Button
                   variant="destructive"
                   onClick={handleDeleteSelected}
                   disabled={deleting}
+                  className="w-full sm:w-auto"
                 >
-                  {deleting ? 'Deleting...' : `Delete ${selectedStudents.length} Student(s)`}
+                  {deleting ? 'Deleting...' : `Delete ${selectedStudentsArray.length} Student(s)`}
                 </Button>
               )}
             </div>
           )}
 
-          {loading ? (
-            <div className="text-muted-foreground text-center py-8">Loading students...</div>
-          ) : error ? (
-            <div className="text-destructive font-medium text-center py-8">{error}</div>
-          ) : students.length === 0 ? (
+          {studentsArray.length === 0 ? (
             <div className="text-muted-foreground text-center py-8">No students found.</div>
           ) : (
             <div className="overflow-x-auto">
@@ -199,81 +243,51 @@ export default function StudentList() {
                   <TableRow>
                     <TableHead className="w-12 text-center">
                       <Checkbox
-                        checked={selectedStudents.length === students.length && students.length > 0}
+                        checked={selectedStudentsArray.length === studentsArray.length && studentsArray.length > 0}
                         onCheckedChange={handleSelectAll}
                       />
                     </TableHead>
                     <TableHead className="text-center">Name</TableHead>
-                    <TableHead className="text-center">Team #</TableHead>
-                    <TableHead className="text-center">Project</TableHead>
                     <TableHead className="text-center">Role</TableHead>
                     <TableHead className="text-center">Resume</TableHead>
                     <TableHead className="text-center">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {students.map((student) => (
+                  {studentsArray.map((student) => (
                     <TableRow key={student._id}>
                       <TableCell className="text-center">
                         <Checkbox
-                          checked={selectedStudents.includes(student._id)}
+                          checked={selectedStudentsArray.includes(student._id)}
                           onCheckedChange={() => handleSelectStudent(student._id)}
                         />
                       </TableCell>
-                      <TableCell className="font-medium text-center">{student.name || 'Unnamed'}</TableCell>
-                      <TableCell className="text-center">
-                        {student.teamId ? (
-                          <Link to={`/teams/${student.teamId._id}`}>
-                            <Badge variant="outline" className="hover:bg-accent cursor-pointer">
-                              {student.teamId.teamNumber || 'N/A'}
-                            </Badge>
-                          </Link>
-                        ) : (
-                          <span className="text-muted-foreground">No Team</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {student.teamId?.projectTitle ? (
-                          <span className="truncate max-w-32 block" title={student.teamId.projectTitle}>
-                            {student.teamId.projectTitle}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">No Project</span>
-                        )}
-                      </TableCell>
+                      <TableCell className="font-medium text-center">{student.name}</TableCell>
                       <TableCell className="text-center">
                         {student.role ? (
                           <Badge variant="secondary">{student.role}</Badge>
                         ) : (
-                          <span className="text-muted-foreground">No Role</span>
+                          <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
                       <TableCell className="text-center">
                         {editingId === student._id ? (
-                          <div className="flex gap-2 justify-center">
+                          <div className="flex gap-2">
                             <Input
                               value={resumeInput}
                               onChange={(e) => setResumeInput(e.target.value)}
                               placeholder="Enter resume URL"
-                              className="w-48"
+                              className="flex-1"
                             />
-                            <Button
-                              size="sm"
-                              onClick={() => saveResume(student)}
-                              disabled={saving}
-                            >
+                            <Button size="sm" onClick={saveResume} disabled={saving}>
                               {saving ? 'Saving...' : 'Save'}
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={cancelEdit}
-                            >
+                            <Button size="sm" variant="outline" onClick={cancelEdit}>
                               Cancel
                             </Button>
                           </div>
                         ) : (
-                          <div className="flex gap-2 justify-center">
+                          <div className="flex items-center justify-center gap-2">
                             {student.resumeUrl ? (
                               <a
                                 href={student.resumeUrl}
@@ -281,16 +295,12 @@ export default function StudentList() {
                                 rel="noopener noreferrer"
                                 className="text-blue-500 hover:text-blue-400 underline"
                               >
-                                View Resume
+                                View
                               </a>
                             ) : (
-                              <span className="text-muted-foreground">No Resume</span>
+                              <span className="text-muted-foreground">—</span>
                             )}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => startEdit(student)}
-                            >
+                            <Button size="sm" variant="outline" onClick={() => startEdit(student)}>
                               Edit
                             </Button>
                           </div>
@@ -298,8 +308,8 @@ export default function StudentList() {
                       </TableCell>
                       <TableCell className="text-center">
                         <Button
-                          size="sm"
                           variant="destructive"
+                          size="sm"
                           onClick={() => handleDeleteSingle(student._id)}
                           disabled={deleting}
                         >

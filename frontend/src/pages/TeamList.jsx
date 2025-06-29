@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ConfirmDialog';
 import CheckpointProgressBar from '../components/CheckpointProgressBar';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -24,13 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useDataManager } from '../hooks/useDataManager';
+import { useDataContext } from '../hooks/useDataContext';
 
 export default function TeamList() {
-  const [teams, setTeams] = useState([])
-  const [departments, setDepartments] = useState([])
+  const location = useLocation();
   const [selectedDept, setSelectedDept] = useState('all')
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [selectedTeams, setSelectedTeams] = useState([])
   const [deleting, setDeleting] = useState(false)
   const [confirmDialog, setConfirmDialog] = useState({
@@ -40,43 +39,39 @@ export default function TeamList() {
     teamCount: 0
   });
 
-  useEffect(() => {
-    api.get('/departments')
-      .then(res => {
-        console.log('Departments received:', res.data);
-        setDepartments(res.data.filter(dep => dep && dep._id));
-      })
-      .catch((err) => {
-        console.error('Error fetching departments:', err);
-        setDepartments([]);
-      });
-  }, [])
+  const { invalidateTeamCache } = useDataContext();
 
-  const fetchTeams = () => {
-    setLoading(true)
-    api.get('/teams')
-      .then(res => {
-        setTeams(res.data);
-      })
-      .catch((err) => {
-        console.error('Error fetching teams:', err);
-        setError('Failed to fetch teams');
-      })
-      .finally(() => setLoading(false))
-  }
+  // Use data manager for teams with force refresh on navigation
+  const { 
+    data: teams = [], 
+    loading, 
+    error, 
+    updateData: updateTeams 
+  } = useDataManager('/teams', {
+    forceRefresh: true, // Force refresh when navigating to this page
+    cacheKey: `/teams-${location.pathname}` // Unique cache key for this page
+  });
 
-  useEffect(() => {
-    fetchTeams()
-  }, [])
+  // Use data manager for departments
+  const { 
+    data: departments = [] 
+  } = useDataManager('/departments', {
+    cacheKey: 'departments'
+  });
+
+  // Always ensure teams is an array
+  const teamsArray = Array.isArray(teams) ? teams : [];
+  const departmentsArray = Array.isArray(departments) ? departments : [];
+  const selectedTeamsArray = Array.isArray(selectedTeams) ? selectedTeams : [];
 
   const filteredTeams = selectedDept === 'all'
-    ? teams
-    : teams.filter(team =>
+    ? teamsArray
+    : teamsArray.filter(team =>
         (team.students || []).some(stu => {
           const depId = stu.department?._id || stu.department
           return depId && depId.toString() === selectedDept
         })
-      )
+      );
 
   const handleSelectTeam = (teamId) => {
     setSelectedTeams(prev => 
@@ -122,15 +117,20 @@ export default function TeamList() {
     try {
       if (type === 'single') {
         await api.delete(`/teams/${teamId}`);
-        setTeams(teams => teams.filter(t => t._id !== teamId));
+        // Update local state immediately
+        updateTeams(prevTeams => prevTeams.filter(t => t._id !== teamId));
         setSelectedTeams(prev => prev.filter(id => id !== teamId));
         toast.success('Team deleted successfully');
       } else if (type === 'bulk') {
         const response = await api.delete('/teams', { data: { teamIds: selectedTeams } });
-        setTeams(teams => teams.filter(t => !selectedTeams.includes(t._id)));
+        // Update local state immediately
+        updateTeams(prevTeams => prevTeams.filter(t => !selectedTeams.includes(t._id)));
         setSelectedTeams([]);
         toast.success(response.data.message);
       }
+      
+      // Invalidate related caches
+      invalidateTeamCache();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to delete teams');
     } finally {
@@ -162,14 +162,14 @@ export default function TeamList() {
         <CardContent className="space-y-6 p-4 sm:p-6">
           <div className="flex flex-col md:flex-row md:items-center gap-4">
             <Label className="font-semibold">Filter by Department:</Label>
-            {departments.length > 0 && (
+            {departmentsArray.length > 0 && (
               <Select value={selectedDept} onValueChange={setSelectedDept}>
                 <SelectTrigger className="w-full md:w-64">
                   <SelectValue placeholder="All Departments" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Departments</SelectItem>
-                  {departments.filter(dep => dep._id).map(dep => (
+                  {departmentsArray.filter(dep => dep && dep._id).map(dep => (
                     <SelectItem key={dep._id} value={dep._id}>{dep.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -178,28 +178,28 @@ export default function TeamList() {
           </div>
 
           {/* Selection Controls */}
-          {filteredTeams.length > 0 && (
+          {(filteredTeams || []).length > 0 && (
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-muted p-4 rounded-lg">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                 <div className="flex items-center space-x-2">
                   <Checkbox
-                    checked={selectedTeams.length === filteredTeams.length && filteredTeams.length > 0}
+                    checked={selectedTeamsArray.length === (filteredTeams || []).length && (filteredTeams || []).length > 0}
                     onCheckedChange={handleSelectAll}
                   />
                   <Label>Select All</Label>
                 </div>
                 <span className="text-muted-foreground">
-                  {selectedTeams.length} of {filteredTeams.length} selected
+                  {selectedTeamsArray.length} of {(filteredTeams || []).length} selected
                 </span>
               </div>
-              {selectedTeams.length > 0 && (
+              {selectedTeamsArray.length > 0 && (
                 <Button
                   variant="destructive"
                   onClick={handleDeleteSelected}
                   disabled={deleting}
                   className="w-full sm:w-auto"
                 >
-                  {deleting ? 'Deleting...' : `Delete ${selectedTeams.length} Team(s)`}
+                  {deleting ? 'Deleting...' : `Delete ${selectedTeamsArray.length} Team(s)`}
                 </Button>
               )}
             </div>
@@ -209,7 +209,7 @@ export default function TeamList() {
             <div className="text-muted-foreground text-center py-8">Loading teams...</div>
           ) : error ? (
             <div className="text-destructive font-medium text-center py-8">{error}</div>
-          ) : filteredTeams.length === 0 ? (
+          ) : (filteredTeams || []).length === 0 ? (
             <div className="text-muted-foreground text-center py-8">No teams found.</div>
           ) : (
             <div className="overflow-x-auto">
@@ -218,7 +218,7 @@ export default function TeamList() {
                   <TableRow>
                     <TableHead className="w-12 text-center">
                       <Checkbox
-                        checked={selectedTeams.length === filteredTeams.length && filteredTeams.length > 0}
+                        checked={selectedTeamsArray.length === (filteredTeams || []).length && (filteredTeams || []).length > 0}
                         onCheckedChange={handleSelectAll}
                       />
                     </TableHead>
@@ -231,11 +231,11 @@ export default function TeamList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTeams.map((team) => (
+                  {(filteredTeams || []).map((team) => (
                     <TableRow key={team._id}>
                       <TableCell className="text-center">
                         <Checkbox
-                          checked={selectedTeams.includes(team._id)}
+                          checked={selectedTeamsArray.includes(team._id)}
                           onCheckedChange={() => handleSelectTeam(team._id)}
                         />
                       </TableCell>
@@ -254,7 +254,16 @@ export default function TeamList() {
                         <CheckpointProgressBar
                           checkpoints={team.checkpoints}
                           teamId={team._id}
-                          onRefresh={fetchTeams}
+                          onRefresh={() => {
+                            // Update local state when checkpoints change
+                            updateTeams(prevTeams => 
+                              prevTeams.map(t => 
+                                t._id === team._id 
+                                  ? { ...t, checkpoints: team.checkpoints }
+                                  : t
+                              )
+                            );
+                          }}
                         />
                       </TableCell>
                       <TableCell className="text-center">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { Check } from 'lucide-react';
@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
+import { useDataManager } from '../hooks/useDataManager';
+import { useDataContext } from '../hooks/useDataContext';
 
 const defaultStudent = { name: '', department: '', role: '', resumeUrl: '' };
 
@@ -18,13 +20,20 @@ export default function AddTeam() {
   const [githubUrl, setGithubUrl] = useState('');
   const [hostedUrl, setHostedUrl] = useState('');
   const [students, setStudents] = useState([{ ...defaultStudent }]);
-  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
-  useEffect(() => {
-    api.get('/departments').then(res => setDepartments(res.data)).catch(() => setDepartments([]));
-  }, []);
+  const { invalidateTeamCache } = useDataContext();
+
+  // Use data manager for departments
+  const { 
+    data: departmentsData = [] 
+  } = useDataManager('/departments', {
+    cacheKey: 'departments'
+  });
+
+  // Ensure departments is always an array
+  const departments = Array.isArray(departmentsData) ? departmentsData : [];
 
   const handleStudentChange = (idx, field, value) => {
     setStudents(students => students.map((s, i) => i === idx ? { ...s, [field]: value } : s));
@@ -96,7 +105,10 @@ export default function AddTeam() {
           resumeUrl: s.resumeUrl
         }))
       });
+      
       toast.success('Team added successfully!');
+      
+      // Reset form
       setProjectTitle('');
       setProjectDescription('');
       setDomain('');
@@ -105,6 +117,9 @@ export default function AddTeam() {
       setHostedUrl('');
       setStudents([{ ...defaultStudent }]);
       setErrors({});
+      
+      // Invalidate related caches
+      invalidateTeamCache();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to add team');
     } finally {

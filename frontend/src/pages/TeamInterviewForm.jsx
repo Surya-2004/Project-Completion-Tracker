@@ -81,13 +81,13 @@ export default function TeamInterviewForm() {
   };
 
   const calculateTeamStats = () => {
-    const studentIds = Object.keys(studentMetrics);
+    const studentIds = Array.isArray(Object.keys(studentMetrics)) ? Object.keys(studentMetrics) : [];
     let completedCount = 0;
     let totalScores = [];
     let averageScores = [];
 
     studentIds.forEach(studentId => {
-      const metrics = studentMetrics[studentId];
+      const metrics = studentMetrics[studentId] || {};
       const scores = Object.values(metrics).filter(score => score !== null && score !== undefined && score > 0);
       
       if (scores.length > 0) {
@@ -95,15 +95,19 @@ export default function TeamInterviewForm() {
         const total = scores.reduce((sum, score) => sum + score, 0);
         const average = total / scores.length;
         totalScores.push(total);
-        averageScores.push(average);
+        averageScores.push(Math.round(average * 100) / 100);
       }
     });
 
+    const totalStudents = studentIds.length;
+    const averageTotalScore = totalScores.length > 0 ? Math.round((totalScores.reduce((a, b) => a + b, 0) / totalScores.length) * 100) / 100 : 0;
+    const averageAverageScore = averageScores.length > 0 ? Math.round((averageScores.reduce((a, b) => a + b, 0) / averageScores.length) * 100) / 100 : 0;
+
     setTeamStats({
-      totalStudents: studentIds.length,
+      totalStudents,
       completedInterviews: completedCount,
-      averageTotalScore: totalScores.length > 0 ? Math.round((totalScores.reduce((a, b) => a + b, 0) / totalScores.length) * 100) / 100 : 0,
-      averageAverageScore: averageScores.length > 0 ? Math.round((averageScores.reduce((a, b) => a + b, 0) / averageScores.length) * 100) / 100 : 0
+      averageTotalScore,
+      averageAverageScore
     });
   };
 
@@ -123,10 +127,10 @@ export default function TeamInterviewForm() {
   const handleSave = async () => {
     try {
       setSaving(true);
-      const studentScores = Object.keys(studentMetrics).map(studentId => ({
+      const studentScores = Array.isArray(Object.keys(studentMetrics)) ? Object.keys(studentMetrics).map(studentId => ({
         studentId,
-        metrics: studentMetrics[studentId]
-      }));
+        metrics: studentMetrics[studentId] || {}
+      })) : [];
       
       await interviewAPI.addTeamInterview(teamId, { studentScores });
       navigate('/interviews');
@@ -144,11 +148,14 @@ export default function TeamInterviewForm() {
   };
 
   const calculateStudentScores = (metrics) => {
-    const scores = Object.values(metrics).filter(score => score !== null && score !== undefined && score > 0);
+    const scores = Object.values(metrics || {}).filter(score => score !== null && score !== undefined && score > 0);
     const total = scores.reduce((sum, score) => sum + score, 0);
     const average = scores.length > 0 ? total / scores.length : 0;
     return { total, average: Math.round(average * 100) / 100, filled: scores.length };
   };
+
+  // Ensure arrays are safe
+  const studentsArray = Array.isArray(students) ? students : [];
 
   if (loading) {
     return (
@@ -210,7 +217,7 @@ export default function TeamInterviewForm() {
             </div>
             <div>
               <Label className="text-sm font-medium">Members</Label>
-              <div className="text-lg font-semibold">{students.length}</div>
+              <div className="text-lg font-semibold">{studentsArray.length}</div>
             </div>
           </div>
           
@@ -302,7 +309,7 @@ export default function TeamInterviewForm() {
       {/* Student Interviews */}
       <div className="space-y-6">
         <h2 className="text-2xl font-bold">Student Interviews</h2>
-        {students.map((student) => {
+        {studentsArray.map((student) => {
           const metrics = studentMetrics[student._id] || {};
           const scores = calculateStudentScores(metrics);
           const hasExistingInterview = existingInterviews[student._id];

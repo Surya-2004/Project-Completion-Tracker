@@ -414,7 +414,7 @@ export default function InterviewStatistics() {
 
         {/* Per Department Tab */}
         <TabsContent value="departments" className="space-y-6">
-          {departments.map((dept) => {
+          {(departments || []).map((dept) => {
             const stats = departmentStats[dept._id];
             
             return (

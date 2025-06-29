@@ -54,6 +54,10 @@ export default function TeamInterviewView() {
     return 'destructive';
   };
 
+  // Ensure arrays are safe
+  const teamStudentsArray = Array.isArray(team?.students) ? team.students : [];
+  const teamStatsScoresArray = Array.isArray(teamStats?.scores) ? teamStats.scores : [];
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -70,7 +74,7 @@ export default function TeamInterviewView() {
     );
   }
 
-  if (!teamStats || teamStats.scores.length === 0) {
+  if (!teamStats || teamStatsScoresArray.length === 0) {
     return (
       <div className="text-center py-8">
         <div className="text-lg text-red-600">No interview data found for this team</div>
@@ -78,7 +82,7 @@ export default function TeamInterviewView() {
           onClick={() => navigate(`/interviews/team/${teamId}`)}
           className="mt-4"
         >
-          Conduct Team Interview
+          Conduct Interview
         </Button>
       </div>
     );
@@ -132,7 +136,7 @@ export default function TeamInterviewView() {
             </div>
             <div>
               <div className="text-sm font-medium text-muted-foreground">Members</div>
-              <div className="text-lg font-semibold">{team.students?.length || 0}</div>
+              <div className="text-lg font-semibold">{teamStudentsArray.length || 0}</div>
             </div>
           </div>
           
@@ -214,9 +218,9 @@ export default function TeamInterviewView() {
           <div className="mt-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span>Interview Progress</span>
-              <span>{Math.round((teamStats.totalStudents / (team.students?.length || 1)) * 100)}%</span>
+              <span>{Math.round((teamStats.totalStudents / (teamStudentsArray.length || 1)) * 100)}%</span>
             </div>
-            <Progress value={(teamStats.totalStudents / (team.students?.length || 1)) * 100} />
+            <Progress value={(teamStats.totalStudents / (teamStudentsArray.length || 1)) * 100} />
           </div>
         </CardContent>
       </Card>
@@ -240,7 +244,7 @@ export default function TeamInterviewView() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {teamStats.scores.map((score) => (
+              {teamStatsScoresArray.map((score) => (
                 <TableRow key={score._id}>
                   <TableCell className="font-medium">{score.studentId.name}</TableCell>
                   <TableCell>{score.studentId.department?.name}</TableCell>
@@ -292,7 +296,7 @@ export default function TeamInterviewView() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {teamStats.scores.map((score) => {
+            {teamStatsScoresArray.map((score) => {
               const percentage = (score.totalScore / 100) * 100; // Assuming max score is 100
               return (
                 <div key={score._id} className="space-y-2">

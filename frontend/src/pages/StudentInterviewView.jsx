@@ -100,7 +100,7 @@ export default function StudentInterviewView() {
     );
   }
 
-  const filledMetrics = Object.values(interview.metrics).filter(score => score !== null && score !== undefined && score > 0).length;
+  const filledMetrics = Object.values(interview?.metrics || {}).filter(score => score !== null && score !== undefined && score > 0).length;
 
   return (
     <div className="space-y-6">
@@ -326,6 +326,7 @@ export default function StudentInterviewView() {
                         {filledMetrics} out of {METRICS.length} metrics evaluated
                       </div>
                     </div>
+                    <Progress value={(filledMetrics / METRICS.length) * 100} />
                   </CardContent>
                 </Card>
               </div>

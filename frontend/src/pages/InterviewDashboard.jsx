@@ -77,15 +77,15 @@ export default function InterviewDashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Interview Dashboard</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Interview Dashboard</h1>
           <p className="text-muted-foreground">
             Conduct and manage interviews for students and teams
           </p>
         </div>
-        <Button onClick={() => navigate('/interviews/statistics')}>
+        <Button onClick={() => navigate('/interviews/statistics')} className="w-full sm:w-auto">
           View Statistics
         </Button>
       </div>
@@ -113,7 +113,7 @@ export default function InterviewDashboard() {
         </div>
 
         <TabsContent value="students" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {filteredStudents.map((student) => (
               <Card key={student._id} className="hover:shadow-md transition-shadow">
                 <CardHeader className="pb-3">
@@ -126,7 +126,7 @@ export default function InterviewDashboard() {
                   <div className="text-sm text-muted-foreground">
                     Department: {student.department?.name || 'N/A'}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Button
                       size="sm"
                       onClick={() => handleInterviewStudent(student._id)}
@@ -139,6 +139,7 @@ export default function InterviewDashboard() {
                       size="sm"
                       variant="outline"
                       onClick={() => handleViewStudentInterview(student._id)}
+                      className="flex-1 sm:flex-none"
                     >
                       <Eye className="w-4 h-4" />
                     </Button>
@@ -155,7 +156,7 @@ export default function InterviewDashboard() {
         </TabsContent>
 
         <TabsContent value="teams" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {filteredTeams.map((team) => (
               <Card key={team._id} className="hover:shadow-md transition-shadow">
                 <CardHeader className="pb-3">
@@ -174,7 +175,7 @@ export default function InterviewDashboard() {
                   <div className="text-sm text-muted-foreground">
                     Members: {team.students?.length || 0}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Button
                       size="sm"
                       onClick={() => handleInterviewTeam(team._id)}
@@ -187,6 +188,7 @@ export default function InterviewDashboard() {
                       size="sm"
                       variant="outline"
                       onClick={() => handleViewTeamInterview(team._id)}
+                      className="flex-1 sm:flex-none"
                     >
                       <Eye className="w-4 h-4" />
                     </Button>

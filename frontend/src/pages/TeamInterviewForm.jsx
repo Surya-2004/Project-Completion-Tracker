@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Users, Calculator, User } from 'lucide-react';
+import { ArrowLeft, Save, Users, Calculator, User, FolderOpen, Github, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { interviewAPI } from '@/services/api';
 import api from '@/services/api';
+import ResumeViewer from '@/components/ResumeViewer';
 
 const METRICS = [
   { key: 'selfIntro', label: 'Self Introduction', description: 'How well the student introduces themselves' },
@@ -212,6 +213,48 @@ export default function TeamInterviewForm() {
               <div className="text-lg font-semibold">{students.length}</div>
             </div>
           </div>
+          
+          {/* Project Description */}
+          <div className="pt-4 border-t">
+            <Label className="text-sm font-medium">Project Description</Label>
+            <div className="text-sm text-muted-foreground leading-relaxed mt-2">
+              {team.projectDescription || 'No description available'}
+            </div>
+          </div>
+          
+          {/* Project Links */}
+          <div className="pt-4 border-t">
+            <Label className="text-sm font-medium">Project Links</Label>
+            <div className="flex gap-2 mt-2">
+              {team.githubUrl && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => window.open(team.githubUrl, '_blank')}
+                  className="flex-1"
+                >
+                  <Github className="w-4 h-4 mr-2" />
+                  GitHub
+                </Button>
+              )}
+              {team.hostedUrl && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => window.open(team.hostedUrl, '_blank')}
+                  className="flex-1"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Live Demo
+                </Button>
+              )}
+            </div>
+            {!team.githubUrl && !team.hostedUrl && (
+              <div className="text-sm text-muted-foreground mt-2">
+                No project links available
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -259,7 +302,7 @@ export default function TeamInterviewForm() {
       {/* Student Interviews */}
       <div className="space-y-6">
         <h2 className="text-2xl font-bold">Student Interviews</h2>
-        {students.map((student, index) => {
+        {students.map((student) => {
           const metrics = studentMetrics[student._id] || {};
           const scores = calculateStudentScores(metrics);
           const hasExistingInterview = existingInterviews[student._id];
@@ -296,6 +339,11 @@ export default function TeamInterviewForm() {
                 )}
               </CardHeader>
               <CardContent>
+                {/* Resume Viewer for Student */}
+                <div className="mb-6">
+                  <ResumeViewer resumeUrl={student.resumeUrl} studentName={student.name} />
+                </div>
+                
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {METRICS.map((metric) => (
                     <div key={metric.key} className="space-y-2">

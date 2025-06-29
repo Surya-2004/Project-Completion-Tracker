@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit, User, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Edit, User, BarChart3, FolderOpen, Github, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { interviewAPI } from '@/services/api';
 import api from '@/services/api';
+import ResumeViewer from '@/components/ResumeViewer';
 
 const METRICS = [
   { key: 'selfIntro', label: 'Self Introduction', description: 'How well the student introduces themselves' },
@@ -156,8 +157,82 @@ export default function StudentInterviewView() {
           </CardContent>
         </Card>
 
+        {/* Project Information */}
+        {student.teamId && (
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FolderOpen className="w-5 h-5" />
+                Project Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground">Project Title</div>
+                  <div className="text-lg font-semibold">{student.teamId.projectTitle}</div>
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground">Domain</div>
+                  <div className="flex items-center gap-2">
+                    <span>{student.teamId.domain}</span>
+                    <Badge variant={student.teamId.completed ? "default" : "secondary"}>
+                      {student.teamId.completed ? 'Completed' : 'In Progress'}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div className="text-sm font-medium text-muted-foreground">Project Description</div>
+                <div className="text-sm text-muted-foreground leading-relaxed">
+                  {student.teamId.projectDescription || 'No description available'}
+                </div>
+              </div>
+              
+              {/* Project Links */}
+              <div className="space-y-2">
+                <div className="text-sm font-medium text-muted-foreground">Project Links</div>
+                <div className="flex gap-2">
+                  {student.teamId.githubUrl && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(student.teamId.githubUrl, '_blank')}
+                      className="flex-1"
+                    >
+                      <Github className="w-4 h-4 mr-2" />
+                      GitHub
+                    </Button>
+                  )}
+                  {student.teamId.hostedUrl && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(student.teamId.hostedUrl, '_blank')}
+                      className="flex-1"
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Live Demo
+                    </Button>
+                  )}
+                </div>
+                {!student.teamId.githubUrl && !student.teamId.hostedUrl && (
+                  <div className="text-sm text-muted-foreground">
+                    No project links available
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Resume Viewer - Full Width */}
+        <Card className="lg:col-span-3">
+          <ResumeViewer resumeUrl={student.resumeUrl} studentName={student.name} />
+        </Card>
+
         {/* Interview Results */}
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="w-5 h-5" />

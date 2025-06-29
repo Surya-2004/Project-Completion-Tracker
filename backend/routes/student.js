@@ -19,7 +19,7 @@ router.get('/', async (req, res) => {
       })
       .populate({
         path: 'teamId',
-        select: 'teamNumber projectTitle'
+        select: 'teamNumber projectTitle projectDescription domain completed githubUrl hostedUrl'
       });
     res.json(students);
   } catch (err) {
@@ -41,7 +41,7 @@ router.get('/:id', async (req, res) => {
       })
       .populate({
         path: 'teamId',
-        select: 'teamNumber projectTitle'
+        select: 'teamNumber projectTitle projectDescription domain completed githubUrl hostedUrl'
       });
     
     if (!student) {
@@ -64,7 +64,7 @@ router.patch('/:id', async (req, res) => {
       { new: true }
     ).populate({
       path: 'teamId',
-      select: 'teamNumber projectTitle'
+      select: 'teamNumber projectTitle projectDescription domain completed githubUrl hostedUrl'
     });
     if (!student) return res.status(404).json({ error: 'Student not found' });
     res.json(student);

@@ -27,7 +27,7 @@ export default function Statistics() {
   }, []);
 
   if (loading) return (
-    <Card className="max-w-4xl mx-auto p-8">
+    <Card className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
       <CardContent>
         <p className="text-muted-foreground">Loading statistics...</p>
       </CardContent>
@@ -35,7 +35,7 @@ export default function Statistics() {
   );
   
   if (error) return (
-    <Card className="max-w-4xl mx-auto p-8">
+    <Card className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
       <CardContent>
         <p className="text-destructive font-medium">{error}</p>
       </CardContent>
@@ -45,13 +45,13 @@ export default function Statistics() {
   if (!stats) return null;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 p-4 sm:p-6 lg:p-8">
       {/* Header */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <CardTitle className="text-3xl font-extrabold tracking-tight">📊 Project Statistics Dashboard</CardTitle>
+              <CardTitle className="text-2xl sm:text-3xl font-extrabold tracking-tight">📊 Project Statistics Dashboard</CardTitle>
               <p className="text-muted-foreground">
                 Comprehensive insights into team progress, department performance, and project completion rates
               </p>
@@ -65,7 +65,7 @@ export default function Statistics() {
       <GeneralStatsCards stats={stats} />
 
       {/* Project Completion Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <ProjectCompletionPieChart 
           completedProjects={stats.completedProjects}
           incompleteProjects={stats.incompleteProjects}
@@ -74,7 +74,7 @@ export default function Statistics() {
       </div>
 
       {/* Department Statistics */}
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <DepartmentStatsChart departmentStats={stats.departmentStats} />
         <DepartmentCompletionChart departmentStats={stats.departmentStats} />
       </div>
@@ -90,12 +90,12 @@ export default function Statistics() {
       <EnhancedDepartmentStatsTable departmentStats={stats.departmentStats} />
 
       {/* Quick Action Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         <Card 
           className="cursor-pointer hover:shadow-lg transition-shadow"
           onClick={() => navigate('/teams/incomplete')}
         >
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-red-600">Incomplete Projects</h3>
@@ -115,7 +115,7 @@ export default function Statistics() {
           className="cursor-pointer hover:shadow-lg transition-shadow"
           onClick={() => navigate('/teams/completed')}
         >
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-green-600">Completed Projects</h3>

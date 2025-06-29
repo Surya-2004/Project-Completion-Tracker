@@ -106,6 +106,48 @@ router.patch('/:id/urls', async (req, res) => {
   }
 });
 
+// Update Team Details (Project Title, Domain, Project Description, Student Roles)
+router.patch('/:id/details', async (req, res) => {
+  try {
+    const { projectTitle, domain, projectDescription, students } = req.body;
+    
+    const team = await Team.findOne({ 
+      _id: req.params.id, 
+      organization: req.user.organization 
+    });
+    if (!team) return res.status(404).json({ error: 'Team not found' });
+
+    // Update team fields
+    if (projectTitle !== undefined) team.projectTitle = projectTitle;
+    if (domain !== undefined) team.domain = domain;
+    if (projectDescription !== undefined) team.projectDescription = projectDescription;
+    
+    await team.save();
+
+    // Update student roles if provided
+    if (students && Array.isArray(students)) {
+      for (const studentUpdate of students) {
+        if (studentUpdate._id && studentUpdate.role !== undefined) {
+          await Student.findOneAndUpdate(
+            { _id: studentUpdate._id, organization: req.user.organization },
+            { role: studentUpdate.role }
+          );
+        }
+      }
+    }
+
+    // Populate students and department for response
+    await team.populate({
+      path: 'students',
+      populate: { path: 'department', model: 'Department' }
+    });
+
+    res.json(team);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // DELETE /api/teams/:id (delete single team)
 router.delete('/:id', async (req, res) => {
   try {

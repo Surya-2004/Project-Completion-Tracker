@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit, Users, BarChart3, User } from 'lucide-react';
+import { ArrowLeft, Edit, Users, BarChart3, User, Github, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -134,6 +134,48 @@ export default function TeamInterviewView() {
               <div className="text-sm font-medium text-muted-foreground">Members</div>
               <div className="text-lg font-semibold">{team.students?.length || 0}</div>
             </div>
+          </div>
+          
+          {/* Project Description */}
+          <div className="pt-4 border-t">
+            <div className="text-sm font-medium text-muted-foreground">Project Description</div>
+            <div className="text-sm text-muted-foreground leading-relaxed mt-2">
+              {team.projectDescription || 'No description available'}
+            </div>
+          </div>
+          
+          {/* Project Links */}
+          <div className="pt-4 border-t">
+            <div className="text-sm font-medium text-muted-foreground">Project Links</div>
+            <div className="flex gap-2 mt-2">
+              {team.githubUrl && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => window.open(team.githubUrl, '_blank')}
+                  className="flex-1"
+                >
+                  <Github className="w-4 h-4 mr-2" />
+                  GitHub
+                </Button>
+              )}
+              {team.hostedUrl && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => window.open(team.hostedUrl, '_blank')}
+                  className="flex-1"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Live Demo
+                </Button>
+              )}
+            </div>
+            {!team.githubUrl && !team.hostedUrl && (
+              <div className="text-sm text-muted-foreground mt-2">
+                No project links available
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Textarea } from "@/components/ui/textarea"
+import toast from 'react-hot-toast';
 
 export default function TeamDetail() {
   const { id } = useParams();
@@ -17,6 +19,15 @@ export default function TeamDetail() {
   const [hostedUrl, setHostedUrl] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
+  
+  // New state for editable fields
+  const [isEditing, setIsEditing] = useState(false);
+  const [projectTitle, setProjectTitle] = useState('');
+  const [domain, setDomain] = useState('');
+  const [projectDescription, setProjectDescription] = useState('');
+  const [studentRoles, setStudentRoles] = useState({});
+  const [savingDetails, setSavingDetails] = useState(false);
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     api.get(`/teams/${id}`)
@@ -24,6 +35,18 @@ export default function TeamDetail() {
         setTeam(res.data);
         setGithubUrl(res.data.githubUrl || '');
         setHostedUrl(res.data.hostedUrl || '');
+        setProjectTitle(res.data.projectTitle || '');
+        setDomain(res.data.domain || '');
+        setProjectDescription(res.data.projectDescription || '');
+        
+        // Initialize student roles
+        const roles = {};
+        if (res.data.students) {
+          res.data.students.forEach(student => {
+            roles[student._id] = student.role || '';
+          });
+        }
+        setStudentRoles(roles);
       })
       .catch((err) => {
         console.error('Error fetching team:', err);
@@ -45,6 +68,78 @@ export default function TeamDetail() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const validateDetails = () => {
+    const newErrors = {};
+    
+    if (!projectTitle.trim()) {
+      newErrors.projectTitle = 'Project Title is required';
+    }
+    if (!domain.trim()) {
+      newErrors.domain = 'Domain is required';
+    }
+    if (!projectDescription.trim()) {
+      newErrors.projectDescription = 'Project Description is required';
+    }
+
+    // Validate student roles
+    Object.keys(studentRoles).forEach(studentId => {
+      if (!studentRoles[studentId].trim()) {
+        newErrors[`role-${studentId}`] = 'Role is required';
+      }
+    });
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSaveDetails = async (e) => {
+    e.preventDefault();
+    
+    if (!validateDetails()) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    setSavingDetails(true);
+    try {
+      const students = Object.keys(studentRoles).map(studentId => ({
+        _id: studentId,
+        role: studentRoles[studentId]
+      }));
+
+      const res = await api.patch(`/teams/${id}/details`, {
+        projectTitle,
+        domain,
+        projectDescription,
+        students
+      });
+      
+      setTeam(res.data);
+      setIsEditing(false);
+      toast.success('Team details updated successfully!');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to update team details');
+    } finally {
+      setSavingDetails(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setProjectTitle(team?.projectTitle || '');
+    setDomain(team?.domain || '');
+    setProjectDescription(team?.projectDescription || '');
+    
+    const roles = {};
+    if (team?.students) {
+      team.students.forEach(student => {
+        roles[student._id] = student.role || '';
+      });
+    }
+    setStudentRoles(roles);
+    setErrors({});
   };
 
   const refreshTeam = async () => {
@@ -75,35 +170,95 @@ export default function TeamDetail() {
   if (!team) return null;
 
   return (
-    <div className="max-w-4xl mx-auto p-8 mt-8">
+    <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 mt-8">
       <Card>
         <CardHeader>
-          <CardTitle className="text-3xl font-extrabold tracking-tight">Team Detail</CardTitle>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <CardTitle className="text-2xl sm:text-3xl font-extrabold tracking-tight">Team Detail</CardTitle>
+            {!isEditing ? (
+              <Button onClick={() => setIsEditing(true)} variant="outline" className="w-full sm:w-auto">
+                Edit Details
+              </Button>
+            ) : (
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <Button onClick={handleCancelEdit} variant="outline" className="w-full sm:w-auto">
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveDetails} disabled={savingDetails} className="w-full sm:w-auto">
+                  {savingDetails ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            )}
+          </div>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 p-4 sm:p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label className="text-muted-foreground">Team Number</Label>
               <div className="font-semibold text-lg">{team.teamNumber || <span className="text-muted-foreground">—</span>}</div>
             </div>
             <div>
-              <Label className="text-muted-foreground">Project Title</Label>
-              <div className="font-semibold">{team.projectTitle || <span className="text-muted-foreground">—</span>}</div>
+              <Label className="text-muted-foreground">Project Title *</Label>
+              {isEditing ? (
+                <div className="space-y-2">
+                  <Input
+                    value={projectTitle}
+                    onChange={e => {
+                      setProjectTitle(e.target.value);
+                      if (errors.projectTitle) setErrors(prev => ({ ...prev, projectTitle: '' }));
+                    }}
+                    placeholder="Enter project title"
+                    className={errors.projectTitle ? 'border-red-500' : ''}
+                  />
+                  {errors.projectTitle && <p className="text-red-500 text-sm">{errors.projectTitle}</p>}
+                </div>
+              ) : (
+                <div className="font-semibold">{team.projectTitle || <span className="text-muted-foreground">—</span>}</div>
+              )}
             </div>
             <div>
-              <Label className="text-muted-foreground">Domain</Label>
-              <div className="font-semibold">{team.domain || <span className="text-muted-foreground">—</span>}</div>
+              <Label className="text-muted-foreground">Domain *</Label>
+              {isEditing ? (
+                <div className="space-y-2">
+                  <Input
+                    value={domain}
+                    onChange={e => {
+                      setDomain(e.target.value);
+                      if (errors.domain) setErrors(prev => ({ ...prev, domain: '' }));
+                    }}
+                    placeholder="Enter domain"
+                    className={errors.domain ? 'border-red-500' : ''}
+                  />
+                  {errors.domain && <p className="text-red-500 text-sm">{errors.domain}</p>}
+                </div>
+              ) : (
+                <div className="font-semibold">{team.domain || <span className="text-muted-foreground">—</span>}</div>
+              )}
             </div>
           </div>
 
-          {team.projectDescription && (
-            <div className="space-y-2">
-              <Label className="text-muted-foreground">Project Description</Label>
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-sm leading-relaxed">{team.projectDescription}</p>
+          <div className="space-y-2">
+            <Label className="text-muted-foreground">Project Description *</Label>
+            {isEditing ? (
+              <div className="space-y-2">
+                <Textarea
+                  value={projectDescription}
+                  onChange={e => {
+                    setProjectDescription(e.target.value);
+                    if (errors.projectDescription) setErrors(prev => ({ ...prev, projectDescription: '' }));
+                  }}
+                  placeholder="Describe the project"
+                  rows={4}
+                  className={errors.projectDescription ? 'border-red-500' : ''}
+                />
+                {errors.projectDescription && <p className="text-red-500 text-sm">{errors.projectDescription}</p>}
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="text-sm leading-relaxed">{team.projectDescription || <span className="text-muted-foreground">—</span>}</p>
+              </div>
+            )}
+          </div>
 
           <div className="space-y-4">
             <h3 className="text-lg font-bold">Project Links</h3>
@@ -155,14 +310,31 @@ export default function TeamDetail() {
                           <div>{student.department?.name || <span className="text-muted-foreground">—</span>}</div>
                         </div>
                         <div>
-                          <Label className="text-muted-foreground">Role</Label>
-                          <div>
-                            {student.role ? (
-                              <Badge variant="secondary">{student.role}</Badge>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </div>
+                          <Label className="text-muted-foreground">Role *</Label>
+                          {isEditing ? (
+                            <div className="space-y-2">
+                              <Input
+                                value={studentRoles[student._id] || ''}
+                                onChange={e => {
+                                  setStudentRoles(prev => ({ ...prev, [student._id]: e.target.value }));
+                                  if (errors[`role-${student._id}`]) {
+                                    setErrors(prev => ({ ...prev, [`role-${student._id}`]: '' }));
+                                  }
+                                }}
+                                placeholder="Enter role"
+                                className={errors[`role-${student._id}`] ? 'border-red-500' : ''}
+                              />
+                              {errors[`role-${student._id}`] && <p className="text-red-500 text-sm">{errors[`role-${student._id}`]}</p>}
+                            </div>
+                          ) : (
+                            <div>
+                              {student.role ? (
+                                <Badge variant="secondary">{student.role}</Badge>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div>
                           <Label className="text-muted-foreground">Resume</Label>

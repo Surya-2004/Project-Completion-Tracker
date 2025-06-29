@@ -154,17 +154,17 @@ export default function TeamList() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-10 mt-8">
+    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-10 mt-8">
       <Card>
         <CardHeader>
-          <CardTitle className="text-3xl font-extrabold text-center">Team List</CardTitle>
+          <CardTitle className="text-2xl sm:text-3xl font-extrabold text-center">Team List</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 p-4 sm:p-6">
           <div className="flex flex-col md:flex-row md:items-center gap-4">
             <Label className="font-semibold">Filter by Department:</Label>
             {departments.length > 0 && (
               <Select value={selectedDept} onValueChange={setSelectedDept}>
-                <SelectTrigger className="w-64">
+                <SelectTrigger className="w-full md:w-64">
                   <SelectValue placeholder="All Departments" />
                 </SelectTrigger>
                 <SelectContent>
@@ -180,7 +180,7 @@ export default function TeamList() {
           {/* Selection Controls */}
           {filteredTeams.length > 0 && (
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-muted p-4 rounded-lg">
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     checked={selectedTeams.length === filteredTeams.length && filteredTeams.length > 0}
@@ -197,6 +197,7 @@ export default function TeamList() {
                   variant="destructive"
                   onClick={handleDeleteSelected}
                   disabled={deleting}
+                  className="w-full sm:w-auto"
                 >
                   {deleting ? 'Deleting...' : `Delete ${selectedTeams.length} Team(s)`}
                 </Button>

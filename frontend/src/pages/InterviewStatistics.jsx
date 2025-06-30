@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, BarChart3, Users, User, Building2, TrendingUp, Award, Target } from 'lucide-react';
+import { ArrowLeft, BarChart3, Users, User, Building2, TrendingUp, Award, Target, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,26 +18,28 @@ export default function InterviewStatistics() {
   const [students, setStudents] = useState([]);
   const [departmentStats, setDepartmentStats] = useState({});
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [overviewRes, departmentsRes, teamsRes, studentsRes] = await Promise.all([
+      const [
+        overviewRes,
+        studentsRes,
+        teamsRes,
+        departmentsRes
+      ] = await Promise.all([
         interviewAPI.getOverviewStats(),
-        api.get('/departments'),
+        api.get('/students'),
         api.get('/teams'),
-        api.get('/students')
+        api.get('/departments')
       ]);
 
       setOverviewStats(overviewRes.data);
-      setDepartments(departmentsRes.data);
-      setTeams(teamsRes.data);
       setStudents(studentsRes.data);
+      setTeams(teamsRes.data);
+      setDepartments(departmentsRes.data);
 
       // Fetch department-specific stats
       const deptStats = {};
@@ -46,16 +48,27 @@ export default function InterviewStatistics() {
           const deptRes = await interviewAPI.getDepartmentInterview(dept._id);
           deptStats[dept._id] = deptRes.data;
         } catch (error) {
-          console.error(`Error fetching stats for department ${dept._id}:`, error);
+          console.error(`Error fetching stats for department ${dept.name}:`, error);
         }
       }
       setDepartmentStats(deptStats);
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching statistics:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchData();
+    setIsRefreshing(false);
+  };
+
+  useEffect(() => {
+    fetchData();
+    // eslint-disable-next-line
+  }, []);
 
   const getScoreColor = (score) => {
     if (score >= 8) return 'text-green-600';
@@ -72,7 +85,7 @@ export default function InterviewStatistics() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-lg">Loading...</div>
+        <div className="text-lg">Loading statistics...</div>
       </div>
     );
   }
@@ -84,12 +97,21 @@ export default function InterviewStatistics() {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
-        <div>
+        <div className="flex-1">
           <h1 className="text-3xl font-bold tracking-tight">Interview Statistics</h1>
           <p className="text-muted-foreground">
-            Comprehensive analysis of interview performance
+            Comprehensive overview of interview performance and results
           </p>
         </div>
+        <Button 
+          onClick={handleRefresh} 
+          disabled={isRefreshing}
+          variant="outline"
+          className="flex items-center gap-2"
+        >
+          <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          {isRefreshing ? 'Refreshing...' : 'Refresh'}
+        </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -356,7 +378,8 @@ export default function InterviewStatistics() {
                 </TableHeader>
                 <TableBody>
                   {teams.map((team) => {
-                    const teamInterviews = overviewStats?.topPerformers.filter(
+                    // Use allInterviews from the API response for more accurate data
+                    const teamInterviews = overviewStats?.allInterviews?.filter(
                       p => p.teamId?._id === team._id
                     ) || [];
                     
@@ -368,8 +391,11 @@ export default function InterviewStatistics() {
                       ? Math.round((teamInterviews.reduce((sum, p) => sum + p.averageScore, 0) / teamInterviews.length) * 100) / 100
                       : 0;
 
-                    const completionRate = team.students?.length > 0 
-                      ? Math.round((teamInterviews.length / team.students.length) * 100)
+                    // Calculate completion rate based on interviewed students vs total team members
+                    const totalTeamMembers = team.students?.length || 0;
+                    const interviewedMembers = teamInterviews.length;
+                    const completionRate = totalTeamMembers > 0 
+                      ? Math.round((interviewedMembers / totalTeamMembers) * 100)
                       : 0;
 
                     return (
@@ -377,7 +403,7 @@ export default function InterviewStatistics() {
                         <TableCell className="font-medium">Team {team.teamNumber}</TableCell>
                         <TableCell>{team.projectTitle}</TableCell>
                         <TableCell>{team.domain}</TableCell>
-                        <TableCell>{team.students?.length || 0}</TableCell>
+                        <TableCell>{totalTeamMembers}</TableCell>
                         <TableCell>
                           {avgTotal > 0 ? (
                             <Badge variant={getScoreBadgeVariant(avgTotal)}>
@@ -398,9 +424,12 @@ export default function InterviewStatistics() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Badge variant={completionRate === 100 ? "default" : "secondary"}>
+                            <Badge variant={completionRate === 100 ? "default" : completionRate > 0 ? "secondary" : "outline"}>
                               {completionRate}% Complete
                             </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              ({interviewedMembers}/{totalTeamMembers})
+                            </span>
                           </div>
                         </TableCell>
                       </TableRow>

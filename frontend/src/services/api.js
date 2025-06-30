@@ -3,7 +3,7 @@ import axios from 'axios';
 const api = axios.create({
   baseURL: import.meta.env.PROD 
     ? '/api'  // In production, use relative path since backend serves frontend
-    : 'http://localhost:5001/api', // In development, use localhost
+    : 'http://localhost:5000/api', // In development, use localhost:5000
 });
 
 // Interview API functions
@@ -31,6 +31,10 @@ export const interviewAPI = {
   // Get overview statistics
   getOverviewStats: () => 
     api.get('/interviews/stats/overview'),
+  
+  // Get all interview scores for the organization
+  getAllInterviews: () => 
+    api.get('/interviews/all'),
 };
 
 export default api;

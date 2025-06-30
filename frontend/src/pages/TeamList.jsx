@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select"
 import { useDataManager } from '../hooks/useDataManager';
 import { useDataContext } from '../hooks/useDataContext';
+import { RefreshCw } from 'lucide-react';
 
 export default function TeamList() {
   const location = useLocation();
@@ -41,14 +42,14 @@ export default function TeamList() {
 
   const { invalidateTeamCache } = useDataContext();
 
-  // Use data manager for teams with force refresh on navigation
+  // Use data manager for teams
   const { 
     data: teams = [], 
     loading, 
     error, 
-    updateData: updateTeams 
+    updateData: updateTeams,
+    refreshData
   } = useDataManager('/teams', {
-    forceRefresh: true, // Force refresh when navigating to this page
     cacheKey: `/teams-${location.pathname}` // Unique cache key for this page
   });
 
@@ -64,14 +65,53 @@ export default function TeamList() {
   const departmentsArray = Array.isArray(departments) ? departments : [];
   const selectedTeamsArray = Array.isArray(selectedTeams) ? selectedTeams : [];
 
-  const filteredTeams = selectedDept === 'all'
-    ? teamsArray
-    : teamsArray.filter(team =>
-        (team.students || []).some(stu => {
-          const depId = stu.department?._id || stu.department
-          return depId && depId.toString() === selectedDept
-        })
-      );
+  // Add a local state for refresh loading
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Add new filter states
+  const [selectedDomain, setSelectedDomain] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [teamNumberSearch, setTeamNumberSearch] = useState('');
+
+  // Extract unique domains from teams
+  const uniqueDomains = Array.from(new Set(teamsArray.map(team => team.domain).filter(Boolean)));
+
+  // Status options
+  const statusOptions = [
+    { value: 'all', label: 'All Statuses' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'inprogress', label: 'In Progress' },
+    { value: 'notstarted', label: 'Not Started' }
+  ];
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshData();
+    setIsRefreshing(false);
+  };
+
+  // Combined filtering logic
+  const filteredTeams = teamsArray.filter(team => {
+    // Department filter
+    if (selectedDept !== 'all') {
+      const hasDept = (team.students || []).some(stu => {
+        const depId = stu.department?._id || stu.department;
+        return depId && depId.toString() === selectedDept;
+      });
+      if (!hasDept) return false;
+    }
+    // Domain filter
+    if (selectedDomain !== 'all' && team.domain !== selectedDomain) return false;
+    // Status filter
+    if (selectedStatus !== 'all') {
+      if (selectedStatus === 'completed' && !team.completed) return false;
+      if (selectedStatus === 'inprogress' && (team.completed || !(team.checkpoints || []).some(cp => cp.completed))) return false;
+      if (selectedStatus === 'notstarted' && (team.completed || (team.checkpoints || []).some(cp => cp.completed))) return false;
+    }
+    // Team number search
+    if (teamNumberSearch && team.teamNumber && !team.teamNumber.toString().includes(teamNumberSearch)) return false;
+    return true;
+  });
 
   const handleSelectTeam = (teamId) => {
     setSelectedTeams(prev => 
@@ -160,21 +200,69 @@ export default function TeamList() {
           <CardTitle className="text-2xl sm:text-3xl font-extrabold text-center">Team List</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6 p-4 sm:p-6">
-          <div className="flex flex-col md:flex-row md:items-center gap-4">
-            <Label className="font-semibold">Filter by Department:</Label>
-            {departmentsArray.length > 0 && (
-              <Select value={selectedDept} onValueChange={setSelectedDept}>
-                <SelectTrigger className="w-full md:w-64">
-                  <SelectValue placeholder="All Departments" />
+          <div className="flex flex-col md:flex-row md:items-center gap-4 flex-wrap">
+            <div className="flex flex-col gap-1">
+              <Label className="font-semibold">Department</Label>
+              {departmentsArray.length > 0 && (
+                <Select value={selectedDept} onValueChange={setSelectedDept}>
+                  <SelectTrigger className="w-full md:w-48">
+                    <SelectValue placeholder="All Departments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {departmentsArray.filter(dep => dep && dep._id).map(dep => (
+                      <SelectItem key={dep._id} value={dep._id}>{dep.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="font-semibold">Domain</Label>
+              <Select value={selectedDomain} onValueChange={setSelectedDomain}>
+                <SelectTrigger className="w-full md:w-40">
+                  <SelectValue placeholder="All Domains" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Departments</SelectItem>
-                  {departmentsArray.filter(dep => dep && dep._id).map(dep => (
-                    <SelectItem key={dep._id} value={dep._id}>{dep.name}</SelectItem>
+                  <SelectItem value="all">All Domains</SelectItem>
+                  {uniqueDomains.map(domain => (
+                    <SelectItem key={domain} value={domain}>{domain}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            )}
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="font-semibold">Status</Label>
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="w-full md:w-40">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="font-semibold">Team Number</Label>
+              <input
+                type="text"
+                value={teamNumberSearch}
+                onChange={e => setTeamNumberSearch(e.target.value)}
+                placeholder="Search Team #"
+                className="flex h-10 w-full md:w-32 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              />
+            </div>
+            <Button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              variant="outline"
+              className="flex items-center gap-2 self-end"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
           </div>
 
           {/* Selection Controls */}

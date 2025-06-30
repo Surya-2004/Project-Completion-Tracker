@@ -1,32 +1,84 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Users, User, Plus, Eye } from 'lucide-react';
+import { Search, Users, User, Plus, Eye, RefreshCw, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useMultiDataManager } from '../hooks/useDataManager';
+import { interviewAPI } from '../services/api';
 
 export default function InterviewDashboard() {
   const [activeTab, setActiveTab] = useState('students');
   const [searchTerm, setSearchTerm] = useState('');
+  const [interviewData, setInterviewData] = useState({});
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
 
   // Use multi-data manager for fetching students and teams
   const { 
     data, 
     loading, 
-    error 
+    error,
+    refreshData
   } = useMultiDataManager([
     { key: 'students', endpoint: '/students', cacheKey: 'students' },
     { key: 'teams', endpoint: '/teams', cacheKey: 'teams' }
-  ], {
-    forceRefresh: true // Force refresh when navigating to this page
-  });
+  ]);
 
   const students = data.students || [];
   const teams = data.teams || [];
+
+  // Fetch interview data for all students and teams
+  const fetchInterviewData = async () => {
+    try {
+      setIsRefreshing(true);
+      
+      // Fetch all interview scores
+      const allInterviewsResponse = await interviewAPI.getAllInterviews();
+      const allInterviews = allInterviewsResponse.data || [];
+      
+      // Create a map of student interviews
+      const studentInterviews = {};
+      allInterviews.forEach(interview => {
+        studentInterviews[interview.studentId._id] = interview;
+      });
+      
+      // Create a map of team interviews
+      const teamInterviews = {};
+      teams.forEach(team => {
+        const teamStudentInterviews = allInterviews.filter(
+          interview => interview.teamId?._id === team._id
+        );
+        teamInterviews[team._id] = {
+          totalStudents: team.students?.length || 0,
+          interviewedStudents: teamStudentInterviews.length,
+          interviews: teamStudentInterviews
+        };
+      });
+      
+      setInterviewData({
+        studentInterviews,
+        teamInterviews
+      });
+    } catch (error) {
+      console.error('Error fetching interview data:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Fetch interview data on component mount
+  useEffect(() => {
+    fetchInterviewData();
+    // eslint-disable-next-line
+  }, []);
+
+  const handleRefresh = async () => {
+    await refreshData();
+    await fetchInterviewData();
+  };
 
   const filteredStudents = students.filter(student =>
     student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -39,14 +91,25 @@ export default function InterviewDashboard() {
     team.teamNumber?.toString().includes(searchTerm)
   );
 
-  const getStudentInterviewStatus = () => {
-    // This would need to be implemented based on your interview data structure
-    return 'Not Interviewed'; // Placeholder
+  const getStudentInterviewStatus = (studentId) => {
+    const interview = interviewData.studentInterviews?.[studentId];
+    if (!interview) return 'Not Interviewed';
+    
+    // Check if student has any metrics with scores
+    const hasScores = Object.values(interview.metrics || {}).some(
+      score => score !== null && score !== undefined && score > 0
+    );
+    
+    return hasScores ? 'Completed' : 'In Progress';
   };
 
-  const getTeamInterviewStatus = () => {
-    // This would need to be implemented based on your interview data structure
-    return 'Not Interviewed'; // Placeholder
+  const getTeamInterviewStatus = (teamId) => {
+    const teamData = interviewData.teamInterviews?.[teamId];
+    if (!teamData) return 'Not Interviewed';
+    
+    if (teamData.interviewedStudents === 0) return 'Not Interviewed';
+    if (teamData.interviewedStudents === teamData.totalStudents) return 'Completed';
+    return 'In Progress';
   };
 
   const getStatusBadgeVariant = (status) => {
@@ -82,12 +145,25 @@ export default function InterviewDashboard() {
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            🎯 Interview Dashboard
-          </CardTitle>
-          <p className="text-muted-foreground">
-            Manage and conduct interviews for students and teams
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                🎯 Interview Dashboard
+              </CardTitle>
+              <p className="text-muted-foreground">
+                Manage and conduct interviews for students and teams
+              </p>
+            </div>
+            <Button 
+              onClick={handleRefresh} 
+              disabled={isRefreshing}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -102,26 +178,29 @@ export default function InterviewDashboard() {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="students" className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                  <Input
-                    placeholder="Search students by name or role..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                <Button 
-                  onClick={() => navigate('/interviews/statistics')}
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                >
-                  View Statistics
-                </Button>
+            {/* Search Bar */}
+            <div className="flex items-center gap-2 mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  placeholder={`Search ${activeTab}...`}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
               </div>
+              <Button
+                onClick={() => navigate('/interviews/statistics')}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <BarChart3 className="w-4 h-4" />
+                View Statistics
+              </Button>
+            </div>
 
+            {/* Students Tab */}
+            <TabsContent value="students" className="space-y-4">
               <div className="grid gap-4">
                 {filteredStudents.map((student) => (
                   <Card key={student._id} className="hover:shadow-md transition-shadow">
@@ -134,12 +213,12 @@ export default function InterviewDashboard() {
                             <Badge variant="secondary">{student.role || 'No Role'}</Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            Team: {student.team?.projectTitle || 'No Team Assigned'}
+                            Team: {student.teamId?.projectTitle ? `Team ${student.teamId.teamNumber} - ${student.teamId.projectTitle}` : 'No Team Assigned'}
                           </p>
                         </div>
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                          <Badge variant={getStatusBadgeVariant(getStudentInterviewStatus())}>
-                            {getStudentInterviewStatus()}
+                          <Badge variant={getStatusBadgeVariant(getStudentInterviewStatus(student._id))}>
+                            {getStudentInterviewStatus(student._id)}
                           </Badge>
                           <div className="flex gap-2">
                             <Button
@@ -174,26 +253,8 @@ export default function InterviewDashboard() {
               )}
             </TabsContent>
 
+            {/* Teams Tab */}
             <TabsContent value="teams" className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                  <Input
-                    placeholder="Search teams by project title, domain, or team number..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                <Button 
-                  onClick={() => navigate('/interviews/statistics')}
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                >
-                  View Statistics
-                </Button>
-              </div>
-
               <div className="grid gap-4">
                 {filteredTeams.map((team) => (
                   <Card key={team._id} className="hover:shadow-md transition-shadow">
@@ -211,8 +272,8 @@ export default function InterviewDashboard() {
                           </p>
                         </div>
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                          <Badge variant={getStatusBadgeVariant(getTeamInterviewStatus())}>
-                            {getTeamInterviewStatus()}
+                          <Badge variant={getStatusBadgeVariant(getTeamInterviewStatus(team._id))}>
+                            {getTeamInterviewStatus(team._id)}
                           </Badge>
                           <div className="flex gap-2">
                             <Button

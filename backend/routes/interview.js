@@ -328,6 +328,7 @@ router.get('/stats/overview', async (req, res) => {
       highestScore: 0,
       lowestScore: Infinity,
       topPerformers: [],
+      allInterviews: allScores,
       departmentStats: {},
       metricAverages: {}
     };
@@ -389,6 +390,27 @@ router.get('/stats/overview', async (req, res) => {
     res.json(overview);
   } catch (error) {
     console.error('Error getting overview stats:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/interviews/all - Get all interview scores for the organization
+router.get('/all', async (req, res) => {
+  try {
+    const allScores = await InterviewScore.find({ organization: req.user.organization })
+      .populate('teamId', 'teamNumber projectTitle')
+      .populate({
+        path: 'studentId',
+        select: 'name department role',
+        populate: {
+          path: 'department',
+          select: 'name'
+        }
+      });
+
+    res.json(allScores);
+  } catch (error) {
+    console.error('Error getting all interview scores:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

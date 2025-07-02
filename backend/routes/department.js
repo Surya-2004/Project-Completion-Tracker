@@ -27,6 +27,45 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Get Single Department
+router.get('/:id', async (req, res) => {
+  try {
+    const department = await Department.findOne({ 
+      _id: req.params.id, 
+      organization: req.user.organization 
+    });
+    
+    if (!department) {
+      return res.status(404).json({ error: 'Department not found' });
+    }
+    
+    res.json(department);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/departments/team-counts
+router.get('/team-counts', async (req, res) => {
+  try {
+    const Team = require('../models/Team');
+    const teams = await Team.find({ organization: req.user.organization }).populate('students');
+    const counts = {};
+    teams.forEach(team => {
+      const depSet = new Set();
+      (team.students || []).forEach(stu => {
+        if (stu.department) depSet.add(stu.department.toString());
+      });
+      depSet.forEach(depId => {
+        counts[depId] = (counts[depId] || 0) + 1;
+      });
+    });
+    res.json(counts);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Delete Department
 router.delete('/:id', async (req, res) => {
   try {
@@ -57,27 +96,6 @@ router.delete('/:id', async (req, res) => {
     
     await Department.findByIdAndDelete(departmentId);
     res.json({ message: 'Department deleted successfully' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET /api/departments/team-counts
-router.get('/team-counts', async (req, res) => {
-  try {
-    const Team = require('../models/Team');
-    const teams = await Team.find({ organization: req.user.organization }).populate('students');
-    const counts = {};
-    teams.forEach(team => {
-      const depSet = new Set();
-      (team.students || []).forEach(stu => {
-        if (stu.department) depSet.add(stu.department.toString());
-      });
-      depSet.forEach(depId => {
-        counts[depId] = (counts[depId] || 0) + 1;
-      });
-    });
-    res.json(counts);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom';
+import { Building2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDataManager } from '../hooks/useDataManager';
+import { useRef } from 'react';
 
 // Import new statistical components
 import GeneralStatsCards from '../components/GeneralStatsCards';
@@ -10,10 +12,10 @@ import DepartmentStatsChart from '../components/DepartmentStatsChart';
 import DepartmentCompletionChart from '../components/DepartmentCompletionChart';
 import DomainStatsChart from '../components/DomainStatsChart';
 import EnhancedDepartmentStatsTable from '../components/EnhancedDepartmentStatsTable';
-import DownloadPDFButton from '../components/DownloadPDFButton';
 
 export default function Statistics() {
   const navigate = useNavigate();
+  const dashboardRef = useRef();
 
   // Use data manager for statistics with force refresh on navigation
   const { 
@@ -55,41 +57,42 @@ export default function Statistics() {
                 Comprehensive insights into team progress, department performance, and project completion rates
               </p>
             </div>
-            <DownloadPDFButton />
           </div>
         </CardHeader>
       </Card>
-      
-      {/* General Statistics Cards */}
-      <GeneralStatsCards stats={stats} />
-
-      {/* Project Completion Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        <ProjectCompletionPieChart 
-          completedProjects={stats.completedProjects}
-          incompleteProjects={stats.incompleteProjects}
-        />
-        <StageProgressChart stageProgress={stats.stageProgress} />
+      <div ref={dashboardRef} id="statistics-dashboard-content" className="space-y-8">
+        {/* General Statistics Cards */}
+        <div className="mb-8">
+          <GeneralStatsCards stats={stats} />
+        </div>
+        {/* Project Completion Overview */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          <ProjectCompletionPieChart 
+            completedProjects={stats.completedProjects}
+            incompleteProjects={stats.incompleteProjects}
+          />
+          <StageProgressChart stageProgress={stats.stageProgress} />
+        </div>
+        {/* Department Statistics */}
+        <div className="space-y-6 mb-8">
+          <DepartmentStatsChart departmentStats={stats.departmentStats} />
+          <DepartmentCompletionChart departmentStats={stats.departmentStats} />
+        </div>
+        {/* Domain Statistics */}
+        <div className="mb-8">
+          <DomainStatsChart 
+            studentsPerDomain={stats.studentsPerDomain}
+            domainCompletionStats={stats.domainCompletionStats}
+            mostPopularDomain={stats.mostPopularDomain}
+          />
+        </div>
+        {/* Enhanced Department Stats Table */}
+        <div className="mb-8">
+          <EnhancedDepartmentStatsTable departmentStats={stats.departmentStats} />
+        </div>
       </div>
-
-      {/* Department Statistics */}
-      <div className="space-y-4 sm:space-y-6">
-        <DepartmentStatsChart departmentStats={stats.departmentStats} />
-        <DepartmentCompletionChart departmentStats={stats.departmentStats} />
-      </div>
-
-      {/* Domain Statistics */}
-      <DomainStatsChart 
-        studentsPerDomain={stats.studentsPerDomain}
-        domainCompletionStats={stats.domainCompletionStats}
-        mostPopularDomain={stats.mostPopularDomain}
-      />
-
-      {/* Enhanced Department Stats Table */}
-      <EnhancedDepartmentStatsTable departmentStats={stats.departmentStats} />
-
       {/* Quick Action Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-10 mt-8">
         <Card 
           className="cursor-pointer hover:shadow-lg transition-shadow"
           onClick={() => navigate('/teams/incomplete')}
@@ -109,7 +112,6 @@ export default function Statistics() {
             </div>
           </CardContent>
         </Card>
-
         <Card 
           className="cursor-pointer hover:shadow-lg transition-shadow"
           onClick={() => navigate('/teams/completed')}

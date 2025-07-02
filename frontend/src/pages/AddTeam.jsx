@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useDataManager } from '../hooks/useDataManager';
 import { useDataContext } from '../hooks/useDataContext';
 
-const defaultStudent = { name: '', department: '', role: '', resumeUrl: '' };
+const defaultStudent = { name: '', department: '', role: '' };
 
 export default function AddTeam() {
   const [projectTitle, setProjectTitle] = useState('');
@@ -22,6 +22,7 @@ export default function AddTeam() {
   const [students, setStudents] = useState([{ ...defaultStudent }]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [departmentStudents, setDepartmentStudents] = useState({});
 
   const { invalidateTeamCache } = useDataContext();
 
@@ -35,11 +36,32 @@ export default function AddTeam() {
   // Ensure departments is always an array
   const departments = Array.isArray(departmentsData) ? departmentsData : [];
 
+  // Fetch students for a specific department
+  const fetchDepartmentStudents = async (departmentId) => {
+    if (!departmentId || departmentStudents[departmentId]) return;
+    
+    try {
+      const response = await api.get(`/students/department/${departmentId}`);
+      setDepartmentStudents(prev => ({
+        ...prev,
+        [departmentId]: response.data
+      }));
+    } catch (error) {
+      console.error('Error fetching department students:', error);
+    }
+  };
+
   const handleStudentChange = (idx, field, value) => {
     setStudents(students => students.map((s, i) => i === idx ? { ...s, [field]: value } : s));
+    
     // Clear error when user starts typing
     if (errors[`student-${idx}-${field}`]) {
       setErrors(prev => ({ ...prev, [`student-${idx}-${field}`]: '' }));
+    }
+
+    // If department changed, fetch students for that department
+    if (field === 'department' && value) {
+      fetchDepartmentStudents(value);
     }
   };
 
@@ -101,8 +123,7 @@ export default function AddTeam() {
         students: students.map(s => ({
           name: s.name,
           department: s.department || undefined,
-          role: s.role,
-          resumeUrl: s.resumeUrl
+          role: s.role
         }))
       });
       
@@ -225,18 +246,6 @@ export default function AddTeam() {
                     <CardContent className="p-3 sm:p-4 space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor={`name-${idx}`}>Student Name *</Label>
-                          <Input
-                            id={`name-${idx}`}
-                            type="text"
-                            value={student.name}
-                            onChange={e => handleStudentChange(idx, 'name', e.target.value)}
-                            placeholder="Enter student name"
-                            className={errors[`student-${idx}-name`] ? 'border-red-500' : ''}
-                          />
-                          {errors[`student-${idx}-name`] && <p className="text-red-500 text-sm">{errors[`student-${idx}-name`]}</p>}
-                        </div>
-                        <div className="space-y-2">
                           <Label htmlFor={`department-${idx}`}>Department *</Label>
                           <select
                             id={`department-${idx}`}
@@ -251,30 +260,36 @@ export default function AddTeam() {
                           </select>
                           {errors[`student-${idx}-department`] && <p className="text-red-500 text-sm">{errors[`student-${idx}-department`]}</p>}
                         </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`name-${idx}`}>Student Name *</Label>
+                          <select
+                            id={`name-${idx}`}
+                            className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${errors[`student-${idx}-name`] ? 'border-red-500' : ''}`}
+                            value={student.name}
+                            onChange={e => handleStudentChange(idx, 'name', e.target.value)}
+                            disabled={!student.department}
+                          >
+                            <option value="">Select student</option>
+                            {student.department && departmentStudents[student.department]?.map(s => (
+                              <option key={s._id} value={s.name}>
+                                {s.name} {s.registeredNumber ? `(${s.registeredNumber})` : '(No Reg. No.)'}
+                              </option>
+                            ))}
+                          </select>
+                          {errors[`student-${idx}-name`] && <p className="text-red-500 text-sm">{errors[`student-${idx}-name`]}</p>}
+                        </div>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor={`role-${idx}`}>Role *</Label>
-                          <Input
-                            id={`role-${idx}`}
-                            type="text"
-                            value={student.role}
-                            onChange={e => handleStudentChange(idx, 'role', e.target.value)}
-                            placeholder="Enter role"
-                            className={errors[`student-${idx}-role`] ? 'border-red-500' : ''}
-                          />
-                          {errors[`student-${idx}-role`] && <p className="text-red-500 text-sm">{errors[`student-${idx}-role`]}</p>}
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`resumeUrl-${idx}`}>Resume URL</Label>
-                          <Input
-                            id={`resumeUrl-${idx}`}
-                            type="url"
-                            value={student.resumeUrl}
-                            onChange={e => handleStudentChange(idx, 'resumeUrl', e.target.value)}
-                            placeholder="Resume URL (optional)"
-                          />
-                        </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`role-${idx}`}>Role *</Label>
+                        <Input
+                          id={`role-${idx}`}
+                          type="text"
+                          value={student.role}
+                          onChange={e => handleStudentChange(idx, 'role', e.target.value)}
+                          placeholder="Enter role"
+                          className={errors[`student-${idx}-role`] ? 'border-red-500' : ''}
+                        />
+                        {errors[`student-${idx}-role`] && <p className="text-red-500 text-sm">{errors[`student-${idx}-role`]}</p>}
                       </div>
                       {students.length > 1 && (
                         <Button

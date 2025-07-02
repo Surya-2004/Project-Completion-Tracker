@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Download, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import PDFGenerator from '../services/pdfGenerator';
-import api from '../services/api';
+import api, { interviewAPI } from '../services/api';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -33,7 +33,7 @@ function replaceOklchColors(element, toFallback = true, backup = new Map()) {
   });
 }
 
-export default function DownloadPDFButton({ dashboardRef }) {
+export default function DownloadInterviewPDFButton({ dashboardRef }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -58,19 +58,59 @@ export default function DownloadPDFButton({ dashboardRef }) {
         const imgWidth = imgProps.width * ratio;
         const imgHeight = imgProps.height * ratio;
         pdf.addImage(imgData, 'PNG', (pdfWidth - imgWidth) / 2, 20, imgWidth, imgHeight);
-        pdf.save(`Project_Statistics_${new Date().toISOString().split('T')[0]}.pdf`);
+        pdf.save(`Interview_Statistics_${new Date().toISOString().split('T')[0]}.pdf`);
       } else {
         // Fallback: old method
-        const [statsResponse, teamsResponse, studentsResponse] = await Promise.all([
-          api.get('/statistics'),
+        const [overviewRes, studentsRes, teamsRes, departmentsRes] = await Promise.all([
+          interviewAPI.getOverviewStats(),
+          api.get('/students'),
           api.get('/teams'),
-          api.get('/students')
+          api.get('/departments')
         ]);
-        const stats = statsResponse.data;
-        const teams = teamsResponse.data;
-        const students = studentsResponse.data;
+        const overviewStats = overviewRes.data;
+        const students = studentsRes.data;
+        const teams = teamsRes.data;
+        const departments = departmentsRes.data;
         const pdfGenerator = new PDFGenerator();
-        await pdfGenerator.generatePDF(stats, teams, students);
+        if (pdfGenerator.generateInterviewPDF) {
+          await pdfGenerator.generateInterviewPDF(overviewStats, students, teams, departments);
+        } else {
+          pdfGenerator.addTitle('Interview Statistics Report', 24);
+          pdfGenerator.addText(`Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, 10);
+          pdfGenerator.currentY += 10;
+          pdfGenerator.addSubtitle('Key Metrics', 16);
+          pdfGenerator.addSimpleTable(
+            ['Metric', 'Value'],
+            [
+              ['Total Interviews', overviewStats.totalInterviews],
+              ['Average Total Score', overviewStats.averageTotalScore],
+              ['Average Score', overviewStats.averageAverageScore],
+              ['Highest Score', overviewStats.highestScore]
+            ],
+            pdfGenerator.currentY
+          );
+          pdfGenerator.currentY += 10;
+          pdfGenerator.addSubtitle('Top Performers', 16);
+          if (overviewStats.topPerformers && overviewStats.topPerformers.length > 0) {
+            pdfGenerator.addSimpleTable(
+              ['Rank', 'Name', 'Registered Number', 'Department', 'Team', 'Total Score', 'Average Score'],
+              overviewStats.topPerformers.map((p, i) => [
+                `#${i + 1}`,
+                p.studentId?.name || '',
+                p.studentId?.registeredNumber || '',
+                p.studentId?.department?.name || '',
+                p.teamId?.teamNumber ? `Team ${p.teamId.teamNumber}` : '',
+                p.totalScore,
+                p.averageScore
+              ]),
+              pdfGenerator.currentY
+            );
+          } else {
+            pdfGenerator.addText('No top performers data available.', 12);
+          }
+          pdfGenerator.addFooter && pdfGenerator.addFooter();
+          pdfGenerator.doc.save(`Interview_Statistics_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+        }
       }
     } catch (err) {
       console.error('Error downloading PDF:', err);
@@ -99,7 +139,6 @@ export default function DownloadPDFButton({ dashboardRef }) {
           </>
         )}
       </Button>
-      
       {error && (
         <div className="absolute top-full left-0 right-0 mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-600 text-sm z-10">
           {error}

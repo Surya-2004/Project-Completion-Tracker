@@ -4,12 +4,70 @@ const Student = require('../models/Student');
 const Team = require('../models/Team');
 const InterviewScore = require('../models/InterviewScore');
 
-// GET /api/students?department=...  (list students by department)
+// POST /api/students (create new student)
+router.post('/', async (req, res) => {
+  try {
+    const { name, department, role, resumeUrl, registeredNumber } = req.body;
+    
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Student name is required' });
+    }
+    
+    if (!department) {
+      return res.status(400).json({ error: 'Department is required' });
+    }
+    
+    // Create new student
+    const student = new Student({
+      name: name.trim(),
+      department,
+      role: role || '',
+      resumeUrl: resumeUrl || '',
+      registeredNumber: registeredNumber || '',
+      organization: req.user.organization
+    });
+    
+    await student.save();
+    
+    // Populate department and team info for response
+    await student.populate([
+      {
+        path: 'department',
+        model: 'Department',
+        select: 'name'
+      },
+      {
+        path: 'teamId',
+        select: 'teamNumber projectTitle projectDescription domain completed githubUrl hostedUrl'
+      }
+    ]);
+    
+    res.status(201).json(student);
+  } catch (err) {
+    if (err.code === 11000) {
+      // Duplicate key error (likely registeredNumber)
+      return res.status(400).json({ error: 'A student with this registered number already exists' });
+    }
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// GET /api/students?department=...&search=...  (list students with search and department filter)
 router.get('/', async (req, res) => {
   try {
-    const { department } = req.query;
+    const { department, search } = req.query;
     const filter = { organization: req.user.organization };
+    
     if (department) filter.department = department;
+    
+    // Add search functionality
+    if (search) {
+      const searchRegex = new RegExp(search, 'i'); // Case-insensitive search
+      filter.$or = [
+        { name: searchRegex },
+        { registeredNumber: searchRegex }
+      ];
+    }
     
     const students = await Student.find(filter)
       .populate({
@@ -20,7 +78,31 @@ router.get('/', async (req, res) => {
       .populate({
         path: 'teamId',
         select: 'teamNumber projectTitle projectDescription domain completed githubUrl hostedUrl'
-      });
+      })
+      .sort({ registeredNumber: 1, name: 1 }); // Sort by registeredNumber first, then name
+    res.json(students);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/students/department/:departmentId (get students by department)
+router.get('/department/:departmentId', async (req, res) => {
+  try {
+    const students = await Student.find({ 
+      department: req.params.departmentId,
+      organization: req.user.organization 
+    })
+      .populate({
+        path: 'department',
+        model: 'Department',
+        select: 'name'
+      })
+      .populate({
+        path: 'teamId',
+        select: 'teamNumber projectTitle projectDescription domain completed githubUrl hostedUrl'
+      })
+      .sort({ registeredNumber: 1, name: 1 }); // Sort by registeredNumber first, then name
     res.json(students);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -54,15 +136,25 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// PATCH /api/students/:id (update resumeUrl)
+// PATCH /api/students/:id (update student fields)
 router.patch('/:id', async (req, res) => {
   try {
-    const { resumeUrl } = req.body;
+    const { resumeUrl, role, registeredNumber } = req.body;
+    const updateData = {};
+    
+    if (resumeUrl !== undefined) updateData.resumeUrl = resumeUrl;
+    if (role !== undefined) updateData.role = role;
+    if (registeredNumber !== undefined) updateData.registeredNumber = registeredNumber;
+    
     const student = await Student.findOneAndUpdate(
       { _id: req.params.id, organization: req.user.organization },
-      { resumeUrl },
+      updateData,
       { new: true }
     ).populate({
+      path: 'department',
+      model: 'Department',
+      select: 'name'
+    }).populate({
       path: 'teamId',
       select: 'teamNumber projectTitle projectDescription domain completed githubUrl hostedUrl'
     });

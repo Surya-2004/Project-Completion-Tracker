@@ -248,6 +248,7 @@ export default function StudentList() {
                       />
                     </TableHead>
                     <TableHead className="text-center">Name</TableHead>
+                    <TableHead className="text-center">Registered Number</TableHead>
                     <TableHead className="text-center">Role</TableHead>
                     <TableHead className="text-center">Resume</TableHead>
                     <TableHead className="text-center">Actions</TableHead>
@@ -263,6 +264,13 @@ export default function StudentList() {
                         />
                       </TableCell>
                       <TableCell className="font-medium text-center">{student.name}</TableCell>
+                      <TableCell className="text-center">
+                        {student.registeredNumber ? (
+                          <Badge variant="outline" className="font-mono">{student.registeredNumber}</Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">Not Assigned</Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="text-center">
                         {student.role ? (
                           <Badge variant="secondary">{student.role}</Badge>

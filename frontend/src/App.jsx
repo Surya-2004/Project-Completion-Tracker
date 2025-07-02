@@ -1,5 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import AddDepartment from './pages/AddDepartment';
+import AddStudent from './pages/AddStudent';
+import DepartmentDetail from './pages/DepartmentDetail';
+import Departments from './pages/Departments';
 import AddTeam from './pages/AddTeam';
 import TeamList from './pages/TeamList';
 import TeamDetail from './pages/TeamDetail';
@@ -44,8 +46,9 @@ function App() {
                     <MainLayout>
                       <Routes>
                         <Route path="/" element={<Navigate to="/teams" />} />
-                        <Route path="/departments" element={<ErrorBoundary><AddDepartment /></ErrorBoundary>} />
-                        <Route path="/departments/add" element={<ErrorBoundary><AddDepartment /></ErrorBoundary>} />
+                        <Route path="/departments" element={<ErrorBoundary><Departments /></ErrorBoundary>} />
+                        <Route path="/departments/:departmentId" element={<ErrorBoundary><DepartmentDetail /></ErrorBoundary>} />
+                        <Route path="/departments/:departmentId/add-student" element={<ErrorBoundary><AddStudent /></ErrorBoundary>} />
                         <Route path="/departments/:id/students" element={<ErrorBoundary><StudentList /></ErrorBoundary>} />
                         <Route path="/teams/add" element={<ErrorBoundary><AddTeam /></ErrorBoundary>} />
                         <Route path="/teams" element={<ErrorBoundary><TeamList /></ErrorBoundary>} />

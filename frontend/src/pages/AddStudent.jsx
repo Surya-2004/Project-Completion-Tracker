@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Save, Building2 } from 'lucide-react';
+import { ArrowLeft, User, Save, Building2, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 
@@ -15,12 +14,9 @@ export default function AddStudent() {
   const [department, setDepartment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    registeredNumber: '',
-    role: '',
-    resumeUrl: ''
-  });
+  const [students, setStudents] = useState([
+    { name: '', registeredNumber: '', role: '', resumeUrl: '' }
+  ]);
 
   useEffect(() => {
     fetchDepartment();
@@ -40,34 +36,36 @@ export default function AddStudent() {
     }
   };
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (idx, e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setStudents(prev => prev.map((stu, i) => i === idx ? { ...stu, [name]: value } : stu));
+  };
+
+  const handleAddRow = () => {
+    setStudents(prev => [...prev, { name: '', registeredNumber: '', role: '', resumeUrl: '' }]);
+  };
+
+  const handleRemoveRow = (idx) => {
+    setStudents(prev => prev.length === 1 ? prev : prev.filter((_, i) => i !== idx));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!formData.name.trim()) {
-      toast.error('Student name is required');
+    const validStudents = students.filter(s => s.name.trim());
+    if (validStudents.length === 0) {
+      toast.error('At least one student with a name is required');
       return;
     }
-
     setSaving(true);
     try {
-      await api.post('/students', {
-        ...formData,
-        department: departmentId
+      await api.post('/students/bulk', {
+        students: validStudents.map(s => ({ ...s, department: departmentId }))
       });
-      
-      toast.success('Student added successfully');
+      toast.success(`${validStudents.length} student(s) added successfully`);
       navigate(`/departments/${departmentId}`);
     } catch (error) {
-      console.error('Error adding student:', error);
-      toast.error(error.response?.data?.error || 'Failed to add student');
+      console.error('Error adding students:', error);
+      toast.error(error.response?.data?.error || 'Failed to add students');
     } finally {
       setSaving(false);
     }
@@ -100,10 +98,10 @@ export default function AddStudent() {
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <User className="w-6 h-6 text-blue-600" />
-            <h1 className="text-3xl font-bold tracking-tight">Add Student</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Add Students</h1>
           </div>
           <p className="text-muted-foreground">
-            Add a new student to {department.name}
+            Add one or more students to {department.name}
           </p>
         </div>
       </div>
@@ -126,7 +124,7 @@ export default function AddStudent() {
         </CardContent>
       </Card>
 
-      {/* Add Student Form */}
+      {/* Add Students Form */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -136,54 +134,63 @@ export default function AddStudent() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="name">Student Name *</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  placeholder="Enter student name"
-                  required
-                />
+            {students.map((student, idx) => (
+              <div key={idx} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end border-b pb-4 mb-4">
+                <div className="space-y-2">
+                  <Label htmlFor={`name-${idx}`}>Student Name *</Label>
+                  <Input
+                    id={`name-${idx}`}
+                    name="name"
+                    value={student.name}
+                    onChange={e => handleInputChange(idx, e)}
+                    placeholder="Enter student name"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`registeredNumber-${idx}`}>Registered Number</Label>
+                  <Input
+                    id={`registeredNumber-${idx}`}
+                    name="registeredNumber"
+                    value={student.registeredNumber}
+                    onChange={e => handleInputChange(idx, e)}
+                    placeholder="e.g., REG2024CS001"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`role-${idx}`}>Role</Label>
+                  <Input
+                    id={`role-${idx}`}
+                    name="role"
+                    value={student.role}
+                    onChange={e => handleInputChange(idx, e)}
+                    placeholder="e.g., Frontend Developer"
+                  />
+                </div>
+                <div className="space-y-2 flex flex-row gap-2 items-end">
+                  <div className="flex-1">
+                    <Label htmlFor={`resumeUrl-${idx}`}>Resume URL</Label>
+                    <Input
+                      id={`resumeUrl-${idx}`}
+                      name="resumeUrl"
+                      type="url"
+                      value={student.resumeUrl}
+                      onChange={e => handleInputChange(idx, e)}
+                      placeholder="https://example.com/resume.pdf"
+                    />
+                  </div>
+                  <Button type="button" variant="destructive" size="icon" onClick={() => handleRemoveRow(idx)} disabled={students.length === 1} title="Remove Student">
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="registeredNumber">Registered Number</Label>
-                <Input
-                  id="registeredNumber"
-                  name="registeredNumber"
-                  value={formData.registeredNumber}
-                  onChange={handleInputChange}
-                  placeholder="e.g., REG2024CS001"
-                />
-              </div>
+            ))}
+            <div className="flex justify-end">
+              <Button type="button" variant="outline" onClick={handleAddRow} className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Add Another Student
+              </Button>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Input
-                id="role"
-                name="role"
-                value={formData.role}
-                onChange={handleInputChange}
-                placeholder="e.g., Frontend Developer, Backend Developer, etc."
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="resumeUrl">Resume URL</Label>
-              <Input
-                id="resumeUrl"
-                name="resumeUrl"
-                type="url"
-                value={formData.resumeUrl}
-                onChange={handleInputChange}
-                placeholder="https://example.com/resume.pdf"
-              />
-            </div>
-
             <div className="flex justify-end gap-4">
               <Button
                 type="button"
@@ -195,7 +202,7 @@ export default function AddStudent() {
               </Button>
               <Button type="submit" disabled={saving} className="flex items-center gap-2">
                 <Save className="w-4 h-4" />
-                {saving ? 'Adding Student...' : 'Add Student'}
+                {saving ? 'Adding Students...' : 'Add Students'}
               </Button>
             </div>
           </form>

@@ -286,4 +286,39 @@ router.delete('/', async (req, res) => {
   }
 });
 
+// Bulk create students
+router.post('/bulk', async (req, res) => {
+  try {
+    const { students } = req.body;
+    if (!Array.isArray(students) || students.length === 0) {
+      return res.status(400).json({ error: 'Students array is required' });
+    }
+    const created = [];
+    for (const s of students) {
+      if (!s.name || !s.name.trim() || !s.department) continue;
+      const student = new Student({
+        name: s.name.trim(),
+        department: s.department,
+        role: s.role || '',
+        resumeUrl: s.resumeUrl || '',
+        registeredNumber: s.registeredNumber || '',
+        organization: req.user.organization
+      });
+      try {
+        await student.save();
+        await student.populate([
+          { path: 'department', model: 'Department', select: 'name' },
+          { path: 'teamId', select: 'teamNumber projectTitle projectDescription domain completed githubUrl hostedUrl' }
+        ]);
+        created.push(student);
+      } catch (err) {
+        // skip duplicates or errors, but you could collect/report them if needed
+      }
+    }
+    res.status(201).json(created);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 module.exports = router; 

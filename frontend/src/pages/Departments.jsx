@@ -32,7 +32,7 @@ export default function Departments() {
     loading,
     error,
     updateData: updateDepartments,
-    refetch: refetchDepartments
+    refreshData: refreshDepartments
   } = useDataManager('/departments', {
     cacheKey: 'departments'
   });
@@ -40,7 +40,7 @@ export default function Departments() {
   // Use data manager for students to count students per department
   const { 
     data: studentsData = [],
-    refetch: refetchStudents
+    refreshData: refreshStudents
   } = useDataManager('/students', {
     cacheKey: 'students'
   });
@@ -118,8 +118,8 @@ export default function Departments() {
   };
 
   const handleRefresh = () => {
-    if (typeof refetchDepartments === 'function') refetchDepartments();
-    if (typeof refetchStudents === 'function') refetchStudents();
+    refreshDepartments();
+    refreshStudents();
     toast.success('Data refreshed');
   };
 

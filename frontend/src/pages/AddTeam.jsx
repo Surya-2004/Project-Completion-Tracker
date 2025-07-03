@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useDataManager } from '../hooks/useDataManager';
 import { useDataContext } from '../hooks/useDataContext';
 
-const defaultStudent = { name: '', department: '', role: '' };
+const defaultStudent = { name: '', registeredNumber: '', department: '', role: '' };
 
 export default function AddTeam() {
   const [projectTitle, setProjectTitle] = useState('');
@@ -52,16 +52,33 @@ export default function AddTeam() {
   };
 
   const handleStudentChange = (idx, field, value) => {
-    setStudents(students => students.map((s, i) => i === idx ? { ...s, [field]: value } : s));
-    
+    setStudents(students => students.map((s, i) => {
+      if (i !== idx) return s;
+      if (field === 'name') {
+        // When selecting a student, value is the student _id
+        const deptId = s.department;
+        const selectedStudent = departmentStudents[deptId]?.find(stu => stu._id === value);
+        if (selectedStudent) {
+          return {
+            ...s,
+            name: selectedStudent.name,
+            registeredNumber: selectedStudent.registeredNumber || '',
+          };
+        } else {
+          return { ...s, name: '', registeredNumber: '' };
+        }
+      }
+      return { ...s, [field]: value };
+    }));
     // Clear error when user starts typing
     if (errors[`student-${idx}-${field}`]) {
       setErrors(prev => ({ ...prev, [`student-${idx}-${field}`]: '' }));
     }
-
     // If department changed, fetch students for that department
     if (field === 'department' && value) {
       fetchDepartmentStudents(value);
+      // Also reset name and registeredNumber when department changes
+      setStudents(students => students.map((s, i) => i === idx ? { ...s, name: '', registeredNumber: '' } : s));
     }
   };
 
@@ -122,6 +139,7 @@ export default function AddTeam() {
         hostedUrl,
         students: students.map(s => ({
           name: s.name,
+          registeredNumber: s.registeredNumber,
           department: s.department || undefined,
           role: s.role
         }))
@@ -265,43 +283,43 @@ export default function AddTeam() {
                           <select
                             id={`name-${idx}`}
                             className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${errors[`student-${idx}-name`] ? 'border-red-500' : ''}`}
-                            value={student.name}
+                            value={departmentStudents[student.department]?.find(stu => stu.name === student.name && stu.registeredNumber === student.registeredNumber)?._id || ''}
                             onChange={e => handleStudentChange(idx, 'name', e.target.value)}
                             disabled={!student.department}
                           >
                             <option value="">Select student</option>
                             {student.department && departmentStudents[student.department]?.map(s => (
-                              <option key={s._id} value={s.name}>
+                              <option key={s._id} value={s._id}>
                                 {s.name} {s.registeredNumber ? `(${s.registeredNumber})` : '(No Reg. No.)'}
                               </option>
                             ))}
                           </select>
                           {errors[`student-${idx}-name`] && <p className="text-red-500 text-sm">{errors[`student-${idx}-name`]}</p>}
                         </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`role-${idx}`}>Role *</Label>
+                          <Input
+                            id={`role-${idx}`}
+                            type="text"
+                            value={student.role}
+                            onChange={e => handleStudentChange(idx, 'role', e.target.value)}
+                            placeholder="Enter role"
+                            className={errors[`student-${idx}-role`] ? 'border-red-500' : ''}
+                          />
+                          {errors[`student-${idx}-role`] && <p className="text-red-500 text-sm">{errors[`student-${idx}-role`]}</p>}
+                        </div>
+                        {students.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            className="absolute top-2 right-2"
+                            onClick={() => removeStudent(idx)}
+                          >
+                            Remove
+                          </Button>
+                        )}
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor={`role-${idx}`}>Role *</Label>
-                        <Input
-                          id={`role-${idx}`}
-                          type="text"
-                          value={student.role}
-                          onChange={e => handleStudentChange(idx, 'role', e.target.value)}
-                          placeholder="Enter role"
-                          className={errors[`student-${idx}-role`] ? 'border-red-500' : ''}
-                        />
-                        {errors[`student-${idx}-role`] && <p className="text-red-500 text-sm">{errors[`student-${idx}-role`]}</p>}
-                      </div>
-                      {students.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="sm"
-                          className="absolute top-2 right-2"
-                          onClick={() => removeStudent(idx)}
-                        >
-                          Remove
-                        </Button>
-                      )}
                     </CardContent>
                   </Card>
                 ))}

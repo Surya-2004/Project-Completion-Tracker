@@ -6,14 +6,16 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useMultiDataManager } from '../hooks/useDataManager';
+import { useMultiDataManager, invalidateCache } from '../hooks/useDataManager';
 import { interviewAPI } from '../services/api';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 
 export default function InterviewDashboard() {
   const [activeTab, setActiveTab] = useState('students');
   const [searchTerm, setSearchTerm] = useState('');
   const [interviewData, setInterviewData] = useState({});
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
   const navigate = useNavigate();
 
   // Use multi-data manager for fetching students and teams
@@ -76,41 +78,46 @@ export default function InterviewDashboard() {
   }, []);
 
   const handleRefresh = async () => {
+    invalidateCache('students');
+    invalidateCache('teams');
     await refreshData();
     await fetchInterviewData();
   };
 
-  const filteredStudents = students.filter(student =>
-    student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.role?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const filteredTeams = teams.filter(team =>
-    team.projectTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    team.domain?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    team.teamNumber?.toString().includes(searchTerm)
-  );
-
   const getStudentInterviewStatus = (studentId) => {
     const interview = interviewData.studentInterviews?.[studentId];
     if (!interview) return 'Not Interviewed';
-    
     // Check if student has any metrics with scores
     const hasScores = Object.values(interview.metrics || {}).some(
       score => score !== null && score !== undefined && score > 0
     );
-    
     return hasScores ? 'Completed' : 'In Progress';
   };
 
   const getTeamInterviewStatus = (teamId) => {
     const teamData = interviewData.teamInterviews?.[teamId];
     if (!teamData) return 'Not Interviewed';
-    
     if (teamData.interviewedStudents === 0) return 'Not Interviewed';
     if (teamData.interviewedStudents === teamData.totalStudents) return 'Completed';
     return 'In Progress';
   };
+
+  const filteredStudents = students.filter(student =>
+    (student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.role?.toLowerCase().includes(searchTerm.toLowerCase())) &&
+    (statusFilter === 'all' ||
+      (statusFilter === 'completed' && getStudentInterviewStatus(student._id) === 'Completed') ||
+      (statusFilter === 'not_completed' && getStudentInterviewStatus(student._id) !== 'Completed'))
+  );
+
+  const filteredTeams = teams.filter(team =>
+    (team.projectTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      team.domain?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      team.teamNumber?.toString().includes(searchTerm)) &&
+    (statusFilter === 'all' ||
+      (statusFilter === 'completed' && getTeamInterviewStatus(team._id) === 'Completed') ||
+      (statusFilter === 'not_completed' && getTeamInterviewStatus(team._id) !== 'Completed'))
+  );
 
   const getStatusBadgeVariant = (status) => {
     switch (status) {
@@ -178,7 +185,7 @@ export default function InterviewDashboard() {
               </TabsTrigger>
             </TabsList>
 
-            {/* Search Bar */}
+            {/* Search Bar and Status Filter */}
             <div className="flex items-center gap-2 mb-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -189,6 +196,16 @@ export default function InterviewDashboard() {
                   className="pl-10"
                 />
               </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="min-w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="not_completed">Not Completed</SelectItem>
+                </SelectContent>
+              </Select>
               <Button
                 onClick={() => navigate('/interviews/statistics')}
                 variant="outline"

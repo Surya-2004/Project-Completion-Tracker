@@ -29,18 +29,35 @@ router.post('/', async (req, res) => {
     });
     await team.save();
 
-    // Create students and associate with team
+    // Create students and associate with team (upsert by registeredNumber)
     const studentIds = [];
     for (const s of students) {
-      const student = new Student({
-        name: s.name,
-        department: s.department,
-        role: s.role,
-        resumeUrl: s.resumeUrl,
-        teamId: team._id,
-        organization: req.user.organization
-      });
-      await student.save();
+      let student;
+      if (s.registeredNumber) {
+        student = await Student.findOneAndUpdate(
+          { registeredNumber: s.registeredNumber.toLowerCase().trim(), organization: req.user.organization },
+          {
+            name: s.name,
+            department: s.department,
+            role: s.role,
+            resumeUrl: s.resumeUrl,
+            teamId: team._id,
+            organization: req.user.organization,
+            registeredNumber: s.registeredNumber.toLowerCase().trim()
+          },
+          { new: true, upsert: true, setDefaultsOnInsert: true }
+        );
+      } else {
+        student = new Student({
+          name: s.name,
+          department: s.department,
+          role: s.role,
+          resumeUrl: s.resumeUrl,
+          teamId: team._id,
+          organization: req.user.organization
+        });
+        await student.save();
+      }
       studentIds.push(student._id);
     }
     team.students = studentIds;

@@ -17,18 +17,31 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Department is required' });
     }
     
-    // Create new student
-    const student = new Student({
-      name: name.trim(),
-      department,
-      role: role || '',
-      resumeUrl: resumeUrl || '',
-      registeredNumber: registeredNumber || '',
-      organization: req.user.organization
-    });
-    
-    await student.save();
-    
+    let student;
+    if (registeredNumber) {
+      student = await Student.findOneAndUpdate(
+        { registeredNumber: registeredNumber.toLowerCase().trim(), organization: req.user.organization },
+        {
+          name: name.trim(),
+          department,
+          role: role || '',
+          resumeUrl: resumeUrl || '',
+          registeredNumber: registeredNumber.toLowerCase().trim(),
+          organization: req.user.organization
+        },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      );
+    } else {
+      student = new Student({
+        name: name.trim(),
+        department,
+        role: role || '',
+        resumeUrl: resumeUrl || '',
+        registeredNumber: '',
+        organization: req.user.organization
+      });
+      await student.save();
+    }
     // Populate department and team info for response
     await student.populate([
       {
@@ -41,11 +54,10 @@ router.post('/', async (req, res) => {
         select: 'teamNumber projectTitle projectDescription domain completed githubUrl hostedUrl'
       }
     ]);
-    
     res.status(201).json(student);
   } catch (err) {
     if (err.code === 11000) {
-      // Duplicate key error (likely registeredNumber)
+      // Duplicate key error (should not occur with upsert, but just in case)
       return res.status(400).json({ error: 'A student with this registered number already exists' });
     }
     res.status(400).json({ error: err.message });
@@ -296,24 +308,36 @@ router.post('/bulk', async (req, res) => {
     const created = [];
     for (const s of students) {
       if (!s.name || !s.name.trim() || !s.department) continue;
-      const student = new Student({
-        name: s.name.trim(),
-        department: s.department,
-        role: s.role || '',
-        resumeUrl: s.resumeUrl || '',
-        registeredNumber: s.registeredNumber || '',
-        organization: req.user.organization
-      });
-      try {
+      let student;
+      if (s.registeredNumber) {
+        student = await Student.findOneAndUpdate(
+          { registeredNumber: s.registeredNumber.toLowerCase().trim(), organization: req.user.organization },
+          {
+            name: s.name.trim(),
+            department: s.department,
+            role: s.role || '',
+            resumeUrl: s.resumeUrl || '',
+            registeredNumber: s.registeredNumber.toLowerCase().trim(),
+            organization: req.user.organization
+          },
+          { new: true, upsert: true, setDefaultsOnInsert: true }
+        );
+      } else {
+        student = new Student({
+          name: s.name.trim(),
+          department: s.department,
+          role: s.role || '',
+          resumeUrl: s.resumeUrl || '',
+          registeredNumber: '',
+          organization: req.user.organization
+        });
         await student.save();
-        await student.populate([
-          { path: 'department', model: 'Department', select: 'name' },
-          { path: 'teamId', select: 'teamNumber projectTitle projectDescription domain completed githubUrl hostedUrl' }
-        ]);
-        created.push(student);
-      } catch (err) {
-        // skip duplicates or errors, but you could collect/report them if needed
       }
+      await student.populate([
+        { path: 'department', model: 'Department', select: 'name' },
+        { path: 'teamId', select: 'teamNumber projectTitle projectDescription domain completed githubUrl hostedUrl' }
+      ]);
+      created.push(student);
     }
     res.status(201).json(created);
   } catch (err) {

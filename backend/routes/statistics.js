@@ -142,6 +142,8 @@ router.get('/', async (req, res) => {
       });
     }
 
+    // Calculate accurate totals for department breakdown (without double-counting)
+    // Simply use the actual total counts since these are already correct
     res.json({
       totalStudents,
       totalTeams,
@@ -156,9 +158,9 @@ router.get('/', async (req, res) => {
       mostPopularDomain,
       departmentStats,
       departmentBreakdownTotals: {
-        totalTeamsAcrossDepartments: departmentStats.reduce((sum, dept) => sum + dept.teamCount, 0),
-        totalStudentsAcrossDepartments: departmentStats.reduce((sum, dept) => sum + dept.studentCount, 0),
-        totalCompletedProjectsAcrossDepartments: departmentStats.reduce((sum, dept) => sum + dept.completedProjects, 0)
+        totalTeamsAcrossDepartments: totalTeams,
+        totalStudentsAcrossDepartments: totalStudents,
+        totalCompletedProjectsAcrossDepartments: completedProjects
       }
     });
   } catch (err) {

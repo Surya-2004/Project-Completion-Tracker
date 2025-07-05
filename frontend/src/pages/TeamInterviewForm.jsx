@@ -317,19 +317,46 @@ export default function TeamInterviewForm() {
           return (
             <Card key={student._id}>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <User className="w-4 h-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{student.name}</CardTitle>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>{student.role}</span>
-                        <Badge variant="outline">{student.department?.name}</Badge>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <User className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <div className="flex-1">
+                        <CardTitle className="text-lg">{student.name}</CardTitle>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-xs">
+                            {student.role}
+                          </Badge>
+                          <Badge variant="secondary" className="text-xs">
+                            {student.department?.name}
+                          </Badge>
+                          {student.registeredNumber && (
+                            <Badge variant="outline" className="text-xs">
+                              #{student.registeredNumber}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
+                    
+                    {/* Contact Information */}
+                    <div className="flex items-center gap-2 ml-11">
+                      {student.email && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => window.open(`mailto:${student.email}`, '_blank')}
+                          className="h-6 px-2 text-xs"
+                        >
+                          <User className="w-3 h-3 mr-1" />
+                          Email
+                        </Button>
+                      )}
+                    </div>
                   </div>
+                  
                   <div className="text-right">
                     <div className={`text-lg font-bold ${getScoreColor(scores.total)}`}>
                       {scores.total} pts
@@ -337,13 +364,15 @@ export default function TeamInterviewForm() {
                     <div className="text-sm text-muted-foreground">
                       Avg: {scores.average}
                     </div>
+                    {hasExistingInterview && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        <Badge variant="secondary" className="text-xs">
+                          Previous: {new Date(hasExistingInterview.updatedAt).toLocaleDateString()}
+                        </Badge>
+                      </div>
+                    )}
                   </div>
                 </div>
-                {hasExistingInterview && (
-                  <div className="text-sm text-muted-foreground">
-                    Previous interview: {new Date(hasExistingInterview.updatedAt).toLocaleDateString()}
-                  </div>
-                )}
               </CardHeader>
               <CardContent>
                 {/* Resume Viewer for Student */}

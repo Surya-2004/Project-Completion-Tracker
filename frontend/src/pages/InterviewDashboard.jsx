@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Users, User, Plus, Eye, RefreshCw, BarChart3 } from 'lucide-react';
+import { Search, Users, User, Plus, Eye, RefreshCw, BarChart3, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useMultiDataManager, invalidateCache } from '../hooks/useDataManager';
 import { interviewAPI } from '../services/api';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import InterviewInviteDialog from '../components/InterviewInviteDialog';
 
 export default function InterviewDashboard() {
   const [activeTab, setActiveTab] = useState('students');
@@ -16,6 +17,7 @@ export default function InterviewDashboard() {
   const [interviewData, setInterviewData] = useState({});
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [inviteDialog, setInviteDialog] = useState({ isOpen: false, type: null, item: null });
   const navigate = useNavigate();
 
   // Use multi-data manager for fetching students and teams
@@ -132,6 +134,21 @@ export default function InterviewDashboard() {
     }
   };
 
+  const handleInviteSuccess = (result) => {
+    // You can add a toast notification here if you have a toast system
+    console.log('Interview invite sent successfully:', result);
+    // Optionally refresh the data
+    handleRefresh();
+  };
+
+  const openInviteDialog = (type, item) => {
+    setInviteDialog({ isOpen: true, type, item });
+  };
+
+  const closeInviteDialog = () => {
+    setInviteDialog({ isOpen: false, type: null, item: null });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -232,12 +249,28 @@ export default function InterviewDashboard() {
                           <p className="text-sm text-muted-foreground">
                             Team: {student.teamId?.projectTitle ? `Team ${student.teamId.teamNumber} - ${student.teamId.projectTitle}` : 'No Team Assigned'}
                           </p>
+                          {student.email && (
+                            <p className="text-sm text-muted-foreground">
+                              Email: {student.email}
+                            </p>
+                          )}
                         </div>
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                           <Badge variant={getStatusBadgeVariant(getStudentInterviewStatus(student._id))}>
                             {getStudentInterviewStatus(student._id)}
                           </Badge>
                           <div className="flex gap-2">
+                            {student.email && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openInviteDialog('student', student)}
+                                className="flex items-center gap-1"
+                              >
+                                <Mail className="w-3 h-3" />
+                                Invite
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               onClick={() => navigate(`/interviews/student/${student._id}`)}
@@ -287,12 +320,28 @@ export default function InterviewDashboard() {
                           <p className="text-sm text-muted-foreground">
                             {team.students?.length || 0} students • {team.projectDescription || 'No description'}
                           </p>
+                          {team.students && team.students.length > 0 && (
+                            <p className="text-sm text-muted-foreground">
+                              Students with emails: {team.students.filter(s => s.email).length}/{team.students.length}
+                            </p>
+                          )}
                         </div>
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                           <Badge variant={getStatusBadgeVariant(getTeamInterviewStatus(team._id))}>
                             {getTeamInterviewStatus(team._id)}
                           </Badge>
                           <div className="flex gap-2">
+                            {team.students && team.students.some(s => s.email) && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openInviteDialog('team', team)}
+                                className="flex items-center gap-1"
+                              >
+                                <Mail className="w-3 h-3" />
+                                Invite Team
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               onClick={() => navigate(`/interviews/team/${team._id}`)}
@@ -327,6 +376,15 @@ export default function InterviewDashboard() {
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* Interview Invite Dialog */}
+      <InterviewInviteDialog
+        isOpen={inviteDialog.isOpen}
+        type={inviteDialog.type}
+        item={inviteDialog.item}
+        onClose={closeInviteDialog}
+        onSuccess={handleInviteSuccess}
+      />
     </div>
   );
 } 

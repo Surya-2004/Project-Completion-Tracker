@@ -35,6 +35,10 @@ export const interviewAPI = {
   // Get all interview scores for the organization
   getAllInterviews: () => 
     api.get('/interviews/all'),
+  
+  // Send interview invite
+  sendInvite: (endpoint, data) => 
+    api.post(endpoint, data),
 };
 
 export default api;

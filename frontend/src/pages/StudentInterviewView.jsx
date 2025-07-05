@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit, User, BarChart3, FolderOpen, Github, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Edit, User, BarChart3, FolderOpen, Github, ExternalLink, FileText, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -121,9 +121,9 @@ export default function StudentInterviewView() {
         </Button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3 lg:items-start">
         {/* Student Information */}
-        <Card className="lg:col-span-1">
+        <Card className="lg:col-span-1 h-fit">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="w-5 h-5" />
@@ -131,35 +131,78 @@ export default function StudentInterviewView() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Name</div>
-              <div className="text-lg font-semibold">{student.name}</div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Role</div>
-              <div className="flex items-center gap-2">
-                <span>{student.role}</span>
-                <Badge variant="outline">{student.department?.name}</Badge>
+            {/* Student Name and Key Info */}
+            <div className="space-y-3">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h3 className="text-xl font-semibold text-white">{student.name}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="outline" className="text-xs">
+                      {student.role}
+                    </Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {student.department?.name}
+                    </Badge>
+                    {student.registeredNumber && (
+                      <Badge variant="outline" className="text-xs">
+                        #{student.registeredNumber}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
+
+            {/* Contact Information */}
+            <div className="space-y-2 pt-2 border-t">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-white">Contact</span>
+                <div className="flex gap-2">
+                  {student.email && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(`mailto:${student.email}`, '_blank')}
+                      className="h-7 px-2"
+                    >
+                      <User className="w-3 h-3 mr-1" />
+                      Email
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Team Information */}
             {student.teamId && (
-              <div>
-                <div className="text-sm font-medium text-muted-foreground">Team</div>
-                <div>Team {student.teamId.teamNumber}</div>
+              <div className="space-y-2 pt-2 border-t">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-white">Team</span>
+                  <Badge variant="outline" className="text-xs">
+                    Team {student.teamId.teamNumber}
+                  </Badge>
+                </div>
               </div>
             )}
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Interview Date</div>
-              <div className="text-sm">
-                {new Date(interview.updatedAt).toLocaleDateString()} at {new Date(interview.updatedAt).toLocaleTimeString()}
+
+            {/* Interview Date */}
+            <div className="space-y-2 pt-2 border-t">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-white">Interview Date</span>
+                <Badge variant="secondary" className="text-xs">
+                  {new Date(interview.updatedAt).toLocaleDateString()}
+                </Badge>
+              </div>
+              <div className="text-xs text-gray-300">
+                {new Date(interview.updatedAt).toLocaleTimeString()}
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Project Information */}
-        {student.teamId && (
-          <Card className="lg:col-span-2">
+        {student.teamId ? (
+          <Card className="lg:col-span-2 h-fit">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FolderOpen className="w-5 h-5" />
@@ -221,6 +264,21 @@ export default function StudentInterviewView() {
                     No project links available
                   </div>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="lg:col-span-2 h-fit">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FolderOpen className="w-5 h-5" />
+                Project Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-center py-8">
+                <div className="text-muted-foreground">No project information available</div>
+                <div className="text-sm text-muted-foreground mt-2">Student is not assigned to a team</div>
               </div>
             </CardContent>
           </Card>

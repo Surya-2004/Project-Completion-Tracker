@@ -19,7 +19,7 @@ async function addOrEditStudentInterview(req, res) {
       interviewScore = new InterviewScore({ studentId, teamId, metrics, organization: req.user.organization });
       await interviewScore.save();
     }
-    await interviewScore.populate({ path: 'studentId', select: 'name department role', populate: { path: 'department', select: 'name' } });
+    await interviewScore.populate({ path: 'studentId', select: 'name department role email registeredNumber', populate: { path: 'department', select: 'name' } });
     await interviewScore.populate('teamId', 'teamNumber projectTitle');
     res.json(interviewScore);
   } catch (error) {
@@ -52,7 +52,7 @@ async function addOrEditTeamInterview(req, res) {
         interviewScore = new InterviewScore({ studentId, teamId, metrics, organization: req.user.organization });
         await interviewScore.save();
       }
-      await interviewScore.populate({ path: 'studentId', select: 'name department role', populate: { path: 'department', select: 'name' } });
+      await interviewScore.populate({ path: 'studentId', select: 'name department role email registeredNumber', populate: { path: 'department', select: 'name' } });
       await interviewScore.populate('teamId', 'teamNumber projectTitle');
       results.push(interviewScore);
     }
@@ -71,7 +71,7 @@ async function getStudentInterview(req, res) {
     if (!student) return res.status(404).json({ error: 'Student not found' });
     const interviewScore = await InterviewScore.findOne({ studentId, organization: req.user.organization })
       .populate('teamId', 'teamNumber projectTitle')
-      .populate({ path: 'studentId', select: 'name department role', populate: { path: 'department', select: 'name' } });
+      .populate({ path: 'studentId', select: 'name department role email registeredNumber', populate: { path: 'department', select: 'name' } });
     if (!interviewScore) return res.status(404).json({ error: 'No interview score found for this student' });
     res.json(interviewScore);
   } catch (error) {
@@ -88,7 +88,7 @@ async function getTeamInterview(req, res) {
     if (!team) return res.status(404).json({ error: 'Team not found' });
     const interviewScores = await InterviewScore.find({ teamId, organization: req.user.organization })
       .populate('teamId', 'teamNumber projectTitle')
-      .populate({ path: 'studentId', select: 'name department role', populate: { path: 'department', select: 'name' } });
+      .populate({ path: 'studentId', select: 'name department role email registeredNumber', populate: { path: 'department', select: 'name' } });
     const teamStats = { totalStudents: interviewScores.length, averageTotalScore: 0, averageAverageScore: 0, highestScore: 0, lowestScore: Infinity, scores: interviewScores };
     if (interviewScores.length > 0) {
       const totalScores = interviewScores.map(score => score.totalScore);
@@ -115,7 +115,7 @@ async function getDepartmentInterview(req, res) {
     const studentIds = students.map(student => student._id);
     const interviewScores = await InterviewScore.find({ studentId: { $in: studentIds }, organization: req.user.organization })
       .populate('teamId', 'teamNumber projectTitle')
-      .populate({ path: 'studentId', select: 'name department role', populate: { path: 'department', select: 'name' } });
+      .populate({ path: 'studentId', select: 'name department role email registeredNumber', populate: { path: 'department', select: 'name' } });
     const departmentStats = { department: department, totalStudents: interviewScores.length, averageTotalScore: 0, averageAverageScore: 0, highestScore: 0, lowestScore: Infinity, scores: interviewScores, metricAverages: {} };
     if (interviewScores.length > 0) {
       const totalScores = interviewScores.map(score => score.totalScore);
@@ -146,7 +146,7 @@ async function getOverviewStats(req, res) {
   try {
     const allScores = await InterviewScore.find({ organization: req.user.organization })
       .populate('teamId', 'teamNumber projectTitle')
-      .populate({ path: 'studentId', select: 'name department role', populate: { path: 'department', select: 'name' } });
+      .populate({ path: 'studentId', select: 'name department role email registeredNumber', populate: { path: 'department', select: 'name' } });
     const overview = { totalInterviews: allScores.length, averageTotalScore: 0, averageAverageScore: 0, highestScore: 0, lowestScore: Infinity, topPerformers: [], allInterviews: allScores, departmentStats: {}, metricAverages: {} };
     if (allScores.length > 0) {
       const totalScores = allScores.map(score => score.totalScore);
@@ -193,7 +193,7 @@ async function getAllInterviews(req, res) {
   try {
     const allScores = await InterviewScore.find({ organization: req.user.organization })
       .populate('teamId', 'teamNumber projectTitle')
-      .populate({ path: 'studentId', select: 'name department role', populate: { path: 'department', select: 'name' } });
+      .populate({ path: 'studentId', select: 'name department role email registeredNumber', populate: { path: 'department', select: 'name' } });
     res.json(allScores);
   } catch (error) {
     console.error('Error getting all interview scores:', error);

@@ -28,6 +28,26 @@ export default function TeamInterviewView() {
         interviewAPI.getTeamInterview(teamId).catch(() => ({ data: { scores: [] } }))
       ]);
       
+      console.log('Team data:', teamRes.data);
+      console.log('Interview data:', interviewRes.data);
+      
+      // Merge team student data with interview data to ensure we have complete student info
+      if (interviewRes.data && interviewRes.data.scores && teamRes.data && teamRes.data.students) {
+        const teamStudentsMap = {};
+        teamRes.data.students.forEach(student => {
+          teamStudentsMap[student._id] = student;
+        });
+        
+        // Enhance interview scores with complete student data
+        interviewRes.data.scores = interviewRes.data.scores.map(score => ({
+          ...score,
+          studentId: {
+            ...score.studentId,
+            ...teamStudentsMap[score.studentId._id]
+          }
+        }));
+      }
+      
       setTeam(teamRes.data);
       setTeamStats(interviewRes.data);
     } catch (error) {
@@ -231,61 +251,97 @@ export default function TeamInterviewView() {
           <CardTitle>Individual Student Results</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Student</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Total Score</TableHead>
-                <TableHead>Average Score</TableHead>
-                <TableHead>Performance</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {teamStatsScoresArray.map((score) => (
-                <TableRow key={score._id}>
-                  <TableCell className="font-medium">{score.studentId.name}</TableCell>
-                  <TableCell>{score.studentId.department?.name}</TableCell>
-                  <TableCell>{score.studentId.role}</TableCell>
-                  <TableCell>
-                    <Badge variant={getScoreBadgeVariant(score.totalScore)}>
-                      {score.totalScore}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getScoreBadgeVariant(score.averageScore)}>
-                      {score.averageScore}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${
-                        score.averageScore >= 8 ? 'bg-green-500' : 
-                        score.averageScore >= 6 ? 'bg-yellow-500' : 'bg-red-500'
-                      }`} />
-                      <span className="text-sm">
-                        {score.averageScore >= 8 ? 'Excellent' : 
-                         score.averageScore >= 6 ? 'Good' : 
-                         score.averageScore >= 4 ? 'Fair' : 'Needs Improvement'}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => navigate(`/interviews/student/${score.studentId._id}/view`)}
-                    >
-                      <User className="w-4 h-4 mr-1" />
-                      View Details
-                    </Button>
-                  </TableCell>
+                      <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Student</TableHead>
+                  <TableHead>Registered Number</TableHead>
+                  <TableHead>Department</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Resume</TableHead>
+                  <TableHead>Total Score</TableHead>
+                  <TableHead>Average Score</TableHead>
+                  <TableHead>Performance</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {teamStatsScoresArray.map((score) => (
+                  <TableRow key={score._id}>
+                    <TableCell className="font-medium">{score.studentId.name}</TableCell>
+                    <TableCell>
+                      {score.studentId.registeredNumber ? (
+                        <Badge variant="outline" className="font-mono text-xs">{score.studentId.registeredNumber}</Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-xs">Not Assigned</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>{score.studentId.department?.name}</TableCell>
+                    <TableCell>
+                      {score.studentId.email ? (
+                        <a
+                          href={`mailto:${score.studentId.email}`}
+                          className="text-blue-500 hover:text-blue-400 underline text-sm"
+                        >
+                          {score.studentId.email}
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">Not set</span>
+                      )}
+                    </TableCell>
+                    <TableCell>{score.studentId.role || 'Not assigned'}</TableCell>
+                    <TableCell>
+                      {score.studentId.resumeUrl ? (
+                        <a
+                          href={score.studentId.resumeUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-500 hover:text-blue-400 underline text-sm"
+                        >
+                          View
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getScoreBadgeVariant(score.totalScore)}>
+                        {score.totalScore}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getScoreBadgeVariant(score.averageScore)}>
+                        {score.averageScore}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${
+                          score.averageScore >= 8 ? 'bg-green-500' : 
+                          score.averageScore >= 6 ? 'bg-yellow-500' : 'bg-red-500'
+                        }`} />
+                        <span className="text-sm">
+                          {score.averageScore >= 8 ? 'Excellent' : 
+                           score.averageScore >= 6 ? 'Good' : 
+                           score.averageScore >= 4 ? 'Fair' : 'Needs Improvement'}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => navigate(`/interviews/student/${score.studentId._id}/view`)}
+                      >
+                        <User className="w-4 h-4 mr-1" />
+                        View Details
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
         </CardContent>
       </Card>
 
@@ -305,9 +361,34 @@ export default function TeamInterviewView() {
                       <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                         <User className="w-4 h-4 text-blue-600" />
                       </div>
-                      <div>
-                        <div className="font-medium">{score.studentId.name}</div>
-                        <div className="text-sm text-muted-foreground">{score.studentId.role}</div>
+                      <div className="flex-1">
+                        <div className="font-medium text-white">{score.studentId.name}</div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-xs">
+                            {score.studentId.role || 'Not assigned'}
+                          </Badge>
+                          <Badge variant="secondary" className="text-xs">
+                            {score.studentId.department?.name}
+                          </Badge>
+                          {score.studentId.registeredNumber && (
+                            <Badge variant="outline" className="text-xs">
+                              #{score.studentId.registeredNumber}
+                            </Badge>
+                          )}
+                        </div>
+                        {score.studentId.email && (
+                          <div className="flex items-center gap-2 mt-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => window.open(`mailto:${score.studentId.email}`, '_blank')}
+                              className="h-6 px-2 text-xs"
+                            >
+                              <User className="w-3 h-3 mr-1" />
+                              Email
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="text-right">

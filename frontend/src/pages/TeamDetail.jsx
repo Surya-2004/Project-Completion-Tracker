@@ -319,7 +319,7 @@ export default function TeamDetail() {
                   <Card key={student._id}>
                     <CardContent className="p-4 space-y-3">
                       <div className="font-semibold text-lg">{student.name || <span className="text-muted-foreground">Unnamed Student</span>}</div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                         <div>
                           <Label className="text-muted-foreground">Registered Number</Label>
                           <div>
@@ -333,6 +333,21 @@ export default function TeamDetail() {
                         <div>
                           <Label className="text-muted-foreground">Department</Label>
                           <div>{student.department?.name || <span className="text-muted-foreground">—</span>}</div>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Email</Label>
+                          <div>
+                            {student.email ? (
+                              <a
+                                href={`mailto:${student.email}`}
+                                className="text-blue-500 hover:text-blue-400 underline text-sm"
+                              >
+                                {student.email}
+                              </a>
+                            ) : (
+                              <span className="text-muted-foreground">Not set</span>
+                            )}
+                          </div>
                         </div>
                         <div>
                           <Label className="text-muted-foreground">Role *</Label>

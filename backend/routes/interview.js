@@ -4,6 +4,7 @@ const InterviewScore = require('../models/InterviewScore');
 const Student = require('../models/Student');
 const Team = require('../models/Team');
 const Department = require('../models/Department');
+const { sendInterviewInviteEmail } = require('../utils/emailService');
 
 // POST /api/interviews/student/:studentId - Add/edit interview score for a student
 router.post('/student/:studentId', async (req, res) => {
@@ -411,6 +412,182 @@ router.get('/all', async (req, res) => {
     res.json(allScores);
   } catch (error) {
     console.error('Error getting all interview scores:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/interviews/invite/student/:studentId - Send interview invite to a student
+router.post('/invite/student/:studentId', async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { interviewTime, timeOption } = req.body;
+
+    // Validate student exists and belongs to user's organization
+    const student = await Student.findOne({ 
+      _id: studentId, 
+      organization: req.user.organization 
+    }).populate('department', 'name');
+    
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    if (!student.email) {
+      return res.status(400).json({ error: 'Student does not have an email address' });
+    }
+
+    // Calculate interview time based on option
+    let calculatedTime;
+    if (timeOption === 'minutes') {
+      const minutes = parseInt(interviewTime);
+      if (isNaN(minutes) || minutes < 0) {
+        return res.status(400).json({ error: 'Invalid minutes value' });
+      }
+      const interviewDate = new Date();
+      interviewDate.setMinutes(interviewDate.getMinutes() + minutes);
+      calculatedTime = interviewDate.toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZoneName: 'short'
+      });
+    } else {
+      // Direct time input
+      calculatedTime = interviewTime;
+    }
+
+    // Send email
+    const emailSent = await sendInterviewInviteEmail(
+      student.email,
+      student.name,
+      calculatedTime,
+      'Individual'
+    );
+
+    if (!emailSent) {
+      return res.status(500).json({ error: 'Failed to send interview invite email' });
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Interview invite sent successfully',
+      interviewTime: calculatedTime,
+      student: {
+        name: student.name,
+        email: student.email,
+        department: student.department?.name
+      }
+    });
+  } catch (error) {
+    console.error('Error sending interview invite:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/interviews/invite/team/:teamId - Send interview invites to all students in a team
+router.post('/invite/team/:teamId', async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    const { interviewTime, timeOption } = req.body;
+
+    // Validate team exists and belongs to user's organization
+    const team = await Team.findOne({ 
+      _id: teamId, 
+      organization: req.user.organization 
+    }).populate({
+      path: 'students',
+      select: 'name email department',
+      populate: {
+        path: 'department',
+        select: 'name'
+      }
+    });
+    
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    if (!team.students || team.students.length === 0) {
+      return res.status(400).json({ error: 'Team has no students' });
+    }
+
+    // Calculate interview time based on option
+    let calculatedTime;
+    if (timeOption === 'minutes') {
+      const minutes = parseInt(interviewTime);
+      if (isNaN(minutes) || minutes < 0) {
+        return res.status(400).json({ error: 'Invalid minutes value' });
+      }
+      const interviewDate = new Date();
+      interviewDate.setMinutes(interviewDate.getMinutes() + minutes);
+      calculatedTime = interviewDate.toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZoneName: 'short'
+      });
+    } else {
+      // Direct time input
+      calculatedTime = interviewTime;
+    }
+
+    // Send emails to all students in the team
+    const emailResults = [];
+    const studentsWithEmails = team.students.filter(student => student.email);
+    const studentsWithoutEmails = team.students.filter(student => !student.email);
+
+    // Prepare team details for email
+    const teamDetails = {
+      teamNumber: team.teamNumber,
+      projectTitle: team.projectTitle,
+      domain: team.domain,
+      projectDescription: team.projectDescription
+    };
+
+    for (const student of studentsWithEmails) {
+      const emailSent = await sendInterviewInviteEmail(
+        student.email,
+        student.name,
+        calculatedTime,
+        'Team',
+        teamDetails
+      );
+      
+      emailResults.push({
+        studentId: student._id,
+        name: student.name,
+        email: student.email,
+        emailSent,
+        department: student.department?.name
+      });
+    }
+
+    const successCount = emailResults.filter(result => result.emailSent).length;
+    const failureCount = emailResults.filter(result => !result.emailSent).length;
+
+    res.json({ 
+      success: true, 
+      message: `Interview invites sent to ${successCount} students${failureCount > 0 ? `, ${failureCount} failed` : ''}`,
+      interviewTime: calculatedTime,
+      team: {
+        teamNumber: team.teamNumber,
+        projectTitle: team.projectTitle,
+        domain: team.domain
+      },
+      emailResults,
+      studentsWithoutEmails: studentsWithoutEmails.map(student => ({
+        name: student.name,
+        department: student.department?.name
+      }))
+    });
+  } catch (error) {
+    console.error('Error sending team interview invites:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

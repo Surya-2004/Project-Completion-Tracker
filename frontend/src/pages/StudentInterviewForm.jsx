@@ -154,27 +154,70 @@ export default function StudentInterviewForm() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <Label className="text-sm font-medium">Name</Label>
-              <div className="text-lg font-semibold">{student.name}</div>
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Role</Label>
-              <div className="flex items-center gap-2">
-                <span>{student.role}</span>
-                <Badge variant="outline">{student.department?.name}</Badge>
+            {/* Student Name and Key Info */}
+            <div className="space-y-3">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h3 className="text-xl font-semibold text-white">{student.name}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="outline" className="text-xs">
+                      {student.role}
+                    </Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {student.department?.name}
+                    </Badge>
+                    {student.registeredNumber && (
+                      <Badge variant="outline" className="text-xs">
+                        #{student.registeredNumber}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
+
+            {/* Contact Information */}
+            <div className="space-y-2 pt-2 border-t">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-white">Contact</span>
+                <div className="flex gap-2">
+                  {student.email && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(`mailto:${student.email}`, '_blank')}
+                      className="h-7 px-2"
+                    >
+                      <User className="w-3 h-3 mr-1" />
+                      Email
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Team Information */}
             {student.teamId && (
-              <div>
-                <Label className="text-sm font-medium">Team</Label>
-                <div>Team {student.teamId.teamNumber}</div>
+              <div className="space-y-2 pt-2 border-t">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-white">Team</span>
+                  <Badge variant="outline" className="text-xs">
+                    Team {student.teamId.teamNumber}
+                  </Badge>
+                </div>
               </div>
             )}
+
+            {/* Previous Interview Info */}
             {existingInterview && (
-              <div>
-                <Label className="text-sm font-medium">Previous Interview</Label>
-                <div className="text-sm text-muted-foreground">
+              <div className="space-y-2 pt-2 border-t">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-white">Previous Interview</span>
+                  <Badge variant="secondary" className="text-xs">
+                    Available
+                  </Badge>
+                </div>
+                <div className="text-xs text-gray-300">
                   Last updated: {new Date(existingInterview.updatedAt).toLocaleDateString()}
                 </div>
               </div>

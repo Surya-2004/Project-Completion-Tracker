@@ -2,8 +2,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 
-export default function EnhancedDepartmentStatsTable({ departmentStats }) {
+export default function EnhancedDepartmentStatsTable({ departmentStats, totals }) {
   if (!departmentStats || departmentStats.length === 0) return null;
+
+  // Use accurate totals if provided, otherwise calculate from department stats
+  const totalTeams = totals?.totalTeamsAcrossDepartments || departmentStats.reduce((sum, dept) => sum + dept.teamCount, 0);
+  const totalStudents = totals?.totalStudentsAcrossDepartments || departmentStats.reduce((sum, dept) => sum + dept.studentCount, 0);
+  const totalCompletedProjects = totals?.totalCompletedProjectsAcrossDepartments || departmentStats.reduce((sum, dept) => sum + dept.completedProjects, 0);
+  const totalDepartments = departmentStats.length;
 
   return (
     <Card>
@@ -103,25 +109,25 @@ export default function EnhancedDepartmentStatsTable({ departmentStats }) {
         <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
           <div className="text-center">
             <div className="text-2xl font-bold text-blue-600">
-              {departmentStats.reduce((sum, dept) => sum + dept.teamCount, 0)}
+              {totalTeams}
             </div>
             <div className="text-sm text-muted-foreground">Total Teams</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-green-600">
-              {departmentStats.reduce((sum, dept) => sum + dept.studentCount, 0)}
+              {totalStudents}
             </div>
             <div className="text-sm text-muted-foreground">Total Students</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-emerald-600">
-              {departmentStats.reduce((sum, dept) => sum + dept.completedProjects, 0)}
+              {totalCompletedProjects}
             </div>
             <div className="text-sm text-muted-foreground">Completed Projects</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-purple-600">
-              {departmentStats.length}
+              {totalDepartments}
             </div>
             <div className="text-sm text-muted-foreground">Departments</div>
           </div>

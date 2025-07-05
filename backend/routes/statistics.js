@@ -102,47 +102,45 @@ router.get('/', async (req, res) => {
       domainTeamCounts[a] > domainTeamCounts[b] ? a : b, null);
 
     // Breakdown by department: number of teams, students, and completed projects
-    const teamsAgg = await Team.aggregate([
-      { $match: { organization: req.user.organization } },
-      { $unwind: '$students' },
-      { $lookup: {
-          from: 'students',
-          localField: 'students',
-          foreignField: '_id',
-          as: 'studentObj'
-        }
-      },
-      { $unwind: '$studentObj' },
-      { $group: {
-          _id: '$studentObj.department',
-          teamCount: { $addToSet: '$_id' },
-          studentCount: { $sum: 1 }
-        }
-      }
-    ]);
-
-    // Get department names and calculate completion stats
+    // Fixed to handle teams with mixed departments correctly
     const departments = await Department.find({ organization: req.user.organization });
-    const departmentStats = teamsAgg.map(dep => {
-      const dept = departments.find(d => d._id.equals(dep._id));
+    const departmentStats = [];
+
+    for (const dept of departments) {
+      // Get all teams that have at least one student from this department
       const deptTeams = teams.filter(team => 
         team.students.some(stu => {
           const depId = stu.department?._id || stu.department;
-          return depId && depId.equals(dep._id);
+          return depId && depId.equals(dept._id);
         })
       );
+
+      // Count students from this department across all teams
+      let studentCount = 0;
+      teams.forEach(team => {
+        team.students.forEach(stu => {
+          const depId = stu.department?._id || stu.department;
+          if (depId && depId.equals(dept._id)) {
+            studentCount++;
+          }
+        });
+      });
+
+      // Count completed projects for this department
       const completedDeptTeams = deptTeams.filter(team => team.completed);
+      
+      // Get unique domains for this department
       const deptDomains = [...new Set(deptTeams.map(team => team.domain).filter(Boolean))];
       
-      return {
-        department: dept ? dept.name : 'Unknown',
-        teamCount: dep.teamCount.length,
-        studentCount: dep.studentCount,
+      departmentStats.push({
+        department: dept.name,
+        teamCount: deptTeams.length, // Each team counted only once per department
+        studentCount: studentCount,
         completedProjects: completedDeptTeams.length,
         averageCompletion: deptTeams.length > 0 ? ((completedDeptTeams.length / deptTeams.length) * 100).toFixed(1) : 0,
         domains: deptDomains
-      };
-    });
+      });
+    }
 
     res.json({
       totalStudents,
@@ -156,7 +154,12 @@ router.get('/', async (req, res) => {
       studentsPerDomain,
       domainCompletionStats,
       mostPopularDomain,
-      departmentStats
+      departmentStats,
+      departmentBreakdownTotals: {
+        totalTeamsAcrossDepartments: departmentStats.reduce((sum, dept) => sum + dept.teamCount, 0),
+        totalStudentsAcrossDepartments: departmentStats.reduce((sum, dept) => sum + dept.studentCount, 0),
+        totalCompletedProjectsAcrossDepartments: departmentStats.reduce((sum, dept) => sum + dept.completedProjects, 0)
+      }
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

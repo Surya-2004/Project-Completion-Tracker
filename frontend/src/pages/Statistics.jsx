@@ -88,7 +88,10 @@ export default function Statistics() {
         </div>
         {/* Enhanced Department Stats Table */}
         <div className="mb-8">
-          <EnhancedDepartmentStatsTable departmentStats={stats.departmentStats} />
+          <EnhancedDepartmentStatsTable 
+            departmentStats={stats.departmentStats} 
+            totals={stats.departmentBreakdownTotals}
+          />
         </div>
       </div>
       {/* Quick Action Cards */}

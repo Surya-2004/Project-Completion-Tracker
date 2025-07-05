@@ -23,7 +23,9 @@ import { useDataContext } from '../hooks/useDataContext';
 export default function StudentList() {
   const { id } = useParams(); // department id
   const [editingId, setEditingId] = useState(null);
+  const [editingField, setEditingField] = useState(null); // 'resume' or 'email'
   const [resumeInput, setResumeInput] = useState('');
+  const [emailInput, setEmailInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [deleting, setDeleting] = useState(false);
@@ -62,40 +64,56 @@ export default function StudentList() {
   // Find department name
   const department = departmentsArray.find(d => d._id === id);
 
-  const startEdit = (stu) => {
+  const startEdit = (stu, field) => {
     setEditingId(stu._id);
-    setResumeInput(stu.resumeUrl || '');
+    setEditingField(field);
+    if (field === 'resume') {
+      setResumeInput(stu.resumeUrl || '');
+    } else if (field === 'email') {
+      setEmailInput(stu.email || '');
+    }
   };
 
   const cancelEdit = () => {
     setEditingId(null);
+    setEditingField(null);
     setResumeInput('');
+    setEmailInput('');
   };
 
-  const saveResume = async () => {
-    if (!editingId) return;
+  const saveField = async () => {
+    if (!editingId || !editingField) return;
     
     setSaving(true);
     try {
-      await api.patch(`/students/${editingId}`, { resumeUrl: resumeInput });
+      const updateData = {};
+      if (editingField === 'resume') {
+        updateData.resumeUrl = resumeInput;
+      } else if (editingField === 'email') {
+        updateData.email = emailInput;
+      }
+      
+      await api.patch(`/students/${editingId}`, updateData);
       
       // Update local state immediately
       updateStudents(prevStudents => 
         prevStudents.map(s => 
           s._id === editingId 
-            ? { ...s, resumeUrl: resumeInput }
+            ? { ...s, ...updateData }
             : s
         )
       );
       
       setEditingId(null);
+      setEditingField(null);
       setResumeInput('');
-      toast.success('Resume URL updated successfully!');
+      setEmailInput('');
+      toast.success(`${editingField === 'resume' ? 'Resume URL' : 'Email'} updated successfully!`);
       
       // Invalidate related caches
       invalidateStudentCache();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to update resume URL');
+      toast.error(err.response?.data?.error || `Failed to update ${editingField === 'resume' ? 'resume URL' : 'email'}`);
     } finally {
       setSaving(false);
     }
@@ -249,6 +267,7 @@ export default function StudentList() {
                     </TableHead>
                     <TableHead className="text-center">Name</TableHead>
                     <TableHead className="text-center">Registered Number</TableHead>
+                    <TableHead className="text-center">Email</TableHead>
                     <TableHead className="text-center">Role</TableHead>
                     <TableHead className="text-center">Resume</TableHead>
                     <TableHead className="text-center">Actions</TableHead>
@@ -272,6 +291,41 @@ export default function StudentList() {
                         )}
                       </TableCell>
                       <TableCell className="text-center">
+                        {editingId === student._id && editingField === 'email' ? (
+                          <div className="flex gap-2">
+                            <Input
+                              value={emailInput}
+                              onChange={(e) => setEmailInput(e.target.value)}
+                              placeholder="Enter email address"
+                              type="email"
+                              className="flex-1"
+                            />
+                            <Button size="sm" onClick={saveField} disabled={saving}>
+                              {saving ? 'Saving...' : 'Save'}
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={cancelEdit}>
+                              Cancel
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center gap-2">
+                            {student.email ? (
+                              <a
+                                href={`mailto:${student.email}`}
+                                className="text-blue-500 hover:text-blue-400 underline"
+                              >
+                                {student.email}
+                              </a>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                            <Button size="sm" variant="outline" onClick={() => startEdit(student, 'email')}>
+                              Edit
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
                         {student.role ? (
                           <Badge variant="secondary">{student.role}</Badge>
                         ) : (
@@ -279,7 +333,7 @@ export default function StudentList() {
                         )}
                       </TableCell>
                       <TableCell className="text-center">
-                        {editingId === student._id ? (
+                        {editingId === student._id && editingField === 'resume' ? (
                           <div className="flex gap-2">
                             <Input
                               value={resumeInput}
@@ -287,7 +341,7 @@ export default function StudentList() {
                               placeholder="Enter resume URL"
                               className="flex-1"
                             />
-                            <Button size="sm" onClick={saveResume} disabled={saving}>
+                            <Button size="sm" onClick={saveField} disabled={saving}>
                               {saving ? 'Saving...' : 'Save'}
                             </Button>
                             <Button size="sm" variant="outline" onClick={cancelEdit}>
@@ -308,7 +362,7 @@ export default function StudentList() {
                             ) : (
                               <span className="text-muted-foreground">—</span>
                             )}
-                            <Button size="sm" variant="outline" onClick={() => startEdit(student)}>
+                            <Button size="sm" variant="outline" onClick={() => startEdit(student, 'resume')}>
                               Edit
                             </Button>
                           </div>

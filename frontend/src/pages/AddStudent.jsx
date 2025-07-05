@@ -15,7 +15,7 @@ export default function AddStudent() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [students, setStudents] = useState([
-    { name: '', registeredNumber: '', role: '', resumeUrl: '' }
+    { name: '', registeredNumber: '', role: '', email: '', resumeUrl: '' }
   ]);
 
   useEffect(() => {
@@ -42,7 +42,7 @@ export default function AddStudent() {
   };
 
   const handleAddRow = () => {
-    setStudents(prev => [...prev, { name: '', registeredNumber: '', role: '', resumeUrl: '' }]);
+    setStudents(prev => [...prev, { name: '', registeredNumber: '', role: '', email: '', resumeUrl: '' }]);
   };
 
   const handleRemoveRow = (idx) => {
@@ -135,7 +135,7 @@ export default function AddStudent() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {students.map((student, idx) => (
-              <div key={idx} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end border-b pb-4 mb-4">
+              <div key={idx} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end border-b pb-4 mb-4">
                 <div className="space-y-2">
                   <Label htmlFor={`name-${idx}`}>Student Name *</Label>
                   <Input
@@ -155,6 +155,17 @@ export default function AddStudent() {
                     value={student.registeredNumber}
                     onChange={e => handleInputChange(idx, e)}
                     placeholder="e.g., REG2024CS001"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`email-${idx}`}>Email</Label>
+                  <Input
+                    id={`email-${idx}`}
+                    name="email"
+                    type="email"
+                    value={student.email}
+                    onChange={e => handleInputChange(idx, e)}
+                    placeholder="student@example.com"
                   />
                 </div>
                 <div className="space-y-2">

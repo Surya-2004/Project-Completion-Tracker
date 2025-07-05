@@ -22,6 +22,7 @@ export default function DepartmentDetail() {
   const [editingStudent, setEditingStudent] = useState(null);
   const [editForm, setEditForm] = useState({
     role: '',
+    email: '',
     resumeUrl: '',
     registeredNumber: ''
   });
@@ -60,6 +61,7 @@ export default function DepartmentDetail() {
     setEditingStudent(student);
     setEditForm({
       role: student.role || '',
+      email: student.email || '',
       resumeUrl: student.resumeUrl || '',
       registeredNumber: student.registeredNumber || ''
     });
@@ -87,7 +89,7 @@ export default function DepartmentDetail() {
   const handleCancelEdit = () => {
     setIsEditDialogOpen(false);
     setEditingStudent(null);
-    setEditForm({ role: '', resumeUrl: '', registeredNumber: '' });
+    setEditForm({ role: '', email: '', resumeUrl: '', registeredNumber: '' });
   };
 
   const handleSelectStudent = (studentId) => {
@@ -312,6 +314,7 @@ export default function DepartmentDetail() {
                     </TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Registered Number</TableHead>
+                    <TableHead>Email</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Team</TableHead>
                     <TableHead>Resume</TableHead>
@@ -338,6 +341,18 @@ export default function DepartmentDetail() {
                           <Badge variant="secondary" className="text-xs">
                             Not Assigned
                           </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {student.email ? (
+                          <a
+                            href={`mailto:${student.email}`}
+                            className="text-blue-600 hover:text-blue-800 underline"
+                          >
+                            {student.email}
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground">Not set</span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -423,6 +438,16 @@ export default function DepartmentDetail() {
                 value={editForm.role}
                 onChange={(e) => setEditForm(prev => ({ ...prev, role: e.target.value }))}
                 placeholder="e.g., Frontend Developer"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="student@example.com"
               />
             </div>
             <div className="space-y-2">

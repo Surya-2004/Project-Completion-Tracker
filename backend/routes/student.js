@@ -7,7 +7,7 @@ const InterviewScore = require('../models/InterviewScore');
 // POST /api/students (create new student)
 router.post('/', async (req, res) => {
   try {
-    const { name, department, role, resumeUrl, registeredNumber } = req.body;
+    const { name, department, role, email, resumeUrl, registeredNumber } = req.body;
     
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Student name is required' });
@@ -25,6 +25,7 @@ router.post('/', async (req, res) => {
           name: name.trim(),
           department,
           role: role || '',
+          email: email ? email.toLowerCase().trim() : '',
           resumeUrl: resumeUrl || '',
           registeredNumber: registeredNumber.toLowerCase().trim(),
           organization: req.user.organization
@@ -36,6 +37,7 @@ router.post('/', async (req, res) => {
         name: name.trim(),
         department,
         role: role || '',
+        email: email ? email.toLowerCase().trim() : '',
         resumeUrl: resumeUrl || '',
         registeredNumber: '',
         organization: req.user.organization
@@ -151,11 +153,12 @@ router.get('/:id', async (req, res) => {
 // PATCH /api/students/:id (update student fields)
 router.patch('/:id', async (req, res) => {
   try {
-    const { resumeUrl, role, registeredNumber } = req.body;
+    const { resumeUrl, role, email, registeredNumber } = req.body;
     const updateData = {};
     
     if (resumeUrl !== undefined) updateData.resumeUrl = resumeUrl;
     if (role !== undefined) updateData.role = role;
+    if (email !== undefined) updateData.email = email ? email.toLowerCase().trim() : '';
     if (registeredNumber !== undefined) updateData.registeredNumber = registeredNumber;
     
     const student = await Student.findOneAndUpdate(
@@ -316,6 +319,7 @@ router.post('/bulk', async (req, res) => {
             name: s.name.trim(),
             department: s.department,
             role: s.role || '',
+            email: s.email ? s.email.toLowerCase().trim() : '',
             resumeUrl: s.resumeUrl || '',
             registeredNumber: s.registeredNumber.toLowerCase().trim(),
             organization: req.user.organization
@@ -327,6 +331,7 @@ router.post('/bulk', async (req, res) => {
           name: s.name.trim(),
           department: s.department,
           role: s.role || '',
+          email: s.email ? s.email.toLowerCase().trim() : '',
           resumeUrl: s.resumeUrl || '',
           registeredNumber: '',
           organization: req.user.organization

@@ -84,7 +84,7 @@ const sendPasswordResetEmail = async (email, resetToken, resetUrl) => {
   }
 };
 
-const sendInterviewInviteEmail = async (email, studentName, interviewTime, interviewType, teamDetails = null) => {
+const sendInterviewInviteEmail = async (email, studentName, interviewTime, interviewType, teamDetails = null, interviewerName = null) => {
   try {
     // Verify transporter before sending
     const isVerified = await verifyTransporter();
@@ -103,6 +103,14 @@ const sendInterviewInviteEmail = async (email, studentName, interviewTime, inter
           ${teamDetails.domain ? `<p style="margin: 0 0 8px 0;"><strong>Domain:</strong> ${teamDetails.domain}</p>` : ''}
           ${teamDetails.projectDescription ? `<p style="margin: 0 0 8px 0;"><strong>Description:</strong> ${teamDetails.projectDescription}</p>` : ''}
         </div>
+      </div>
+    ` : '';
+
+    // Add interviewer section if interviewerName is provided
+    const interviewerSection = interviewerName ? `
+      <div style="background-color: #f0f8ff; padding: 15px; border-radius: 6px; margin: 15px 0; text-align: left;">
+        <h3 style="color: #333; margin: 0 0 10px 0;">👤 Interviewer</h3>
+        <p style="color: #007bff; font-size: 16px; font-weight: bold; margin: 0;">${interviewerName}</p>
       </div>
     ` : '';
 
@@ -132,6 +140,7 @@ const sendInterviewInviteEmail = async (email, studentName, interviewTime, inter
               </div>
             </div>
             
+            ${interviewerSection}
             ${teamSection}
             
             <div style="background-color: #e8f4fd; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: left;">

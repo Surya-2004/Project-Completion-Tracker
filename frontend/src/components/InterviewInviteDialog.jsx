@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar, Clock, Mail, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,8 +16,15 @@ export default function InterviewInviteDialog({
 }) {
   const [timeOption, setTimeOption] = useState('minutes');
   const [interviewTime, setInterviewTime] = useState('');
+  const [interviewerName, setInterviewerName] = useState('');
+  const [timeZone, setTimeZone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const detectedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    setTimeZone(detectedTimeZone);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -54,7 +61,9 @@ export default function InterviewInviteDialog({
 
       const response = await interviewAPI.sendInvite(endpoint, {
         interviewTime,
-        timeOption
+        timeOption,
+        interviewerName: interviewerName.trim() || undefined,
+        timeZone
       });
 
       if (response.data.success) {
@@ -74,6 +83,7 @@ export default function InterviewInviteDialog({
   const handleClose = () => {
     setTimeOption('minutes');
     setInterviewTime('');
+    setInterviewerName('');
     setError('');
     setIsLoading(false);
     onClose();
@@ -176,6 +186,18 @@ export default function InterviewInviteDialog({
                   Select a future date and time for the interview
                 </p>
               )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="interviewerName">Interviewer Name (optional)</Label>
+              <Input
+                id="interviewerName"
+                type="text"
+                value={interviewerName}
+                onChange={(e) => setInterviewerName(e.target.value)}
+                placeholder="Enter interviewer name (optional)"
+                className="w-full"
+              />
             </div>
 
             {error && (

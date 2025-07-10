@@ -420,7 +420,8 @@ router.get('/all', async (req, res) => {
 router.post('/invite/student/:studentId', async (req, res) => {
   try {
     const { studentId } = req.params;
-    const { interviewTime, timeOption } = req.body;
+    const { interviewTime, timeOption, interviewerName, timeZone } = req.body;
+    const effectiveTimeZone = timeZone || 'Asia/Kolkata';
 
     // Validate student exists and belongs to user's organization
     const student = await Student.findOne({ 
@@ -452,11 +453,22 @@ router.post('/invite/student/:studentId', async (req, res) => {
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
+        timeZone: effectiveTimeZone,
         timeZoneName: 'short'
       });
     } else {
       // Direct time input
-      calculatedTime = interviewTime;
+      const interviewDate = new Date(interviewTime);
+      calculatedTime = interviewDate.toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: effectiveTimeZone,
+        timeZoneName: 'short'
+      });
     }
 
     // Send email
@@ -464,7 +476,9 @@ router.post('/invite/student/:studentId', async (req, res) => {
       student.email,
       student.name,
       calculatedTime,
-      'Individual'
+      'Individual',
+      null,
+      interviewerName || null
     );
 
     if (!emailSent) {
@@ -491,7 +505,8 @@ router.post('/invite/student/:studentId', async (req, res) => {
 router.post('/invite/team/:teamId', async (req, res) => {
   try {
     const { teamId } = req.params;
-    const { interviewTime, timeOption } = req.body;
+    const { interviewTime, timeOption, interviewerName, timeZone } = req.body;
+    const effectiveTimeZone = timeZone || 'Asia/Kolkata';
 
     // Validate team exists and belongs to user's organization
     const team = await Team.findOne({ 
@@ -530,11 +545,22 @@ router.post('/invite/team/:teamId', async (req, res) => {
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
+        timeZone: effectiveTimeZone,
         timeZoneName: 'short'
       });
     } else {
       // Direct time input
-      calculatedTime = interviewTime;
+      const interviewDate = new Date(interviewTime);
+      calculatedTime = interviewDate.toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: effectiveTimeZone,
+        timeZoneName: 'short'
+      });
     }
 
     // Send emails to all students in the team
@@ -556,7 +582,8 @@ router.post('/invite/team/:teamId', async (req, res) => {
         student.name,
         calculatedTime,
         'Team',
-        teamDetails
+        teamDetails,
+        interviewerName || null
       );
       
       emailResults.push({
